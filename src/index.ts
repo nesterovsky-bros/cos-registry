@@ -98,6 +98,7 @@ app.get('*', async (request, response, next) =>
 				response.write(
 		`<html><head>
 		  <title>Index of ${path}</title>
+		  <link rel="icon" href="data:,">
 		  <style>
 			body 
 			{
@@ -155,7 +156,7 @@ app.get('*', async (request, response, next) =>
 		  <section id="main">
 			<header><h1>Index of ${
 				path.substring(0, path.length - 1).split("/").map((part, index, parts) =>
-					`<a href="${'../'.repeat(parts.length - index - 1)}?accessKey=${info!.accessKey}">${part}/</a>`).
+					`<a href="${'../'.repeat(parts.length - index - 1)}?accessKey=${info!.accessKey}">${part}/</a> `).
 				join("")}
 				</h1></header>
 			<table id="index">
@@ -170,14 +171,18 @@ app.get('*', async (request, response, next) =>
 			{
 				if (item.Prefix && info?.match?.(item.Prefix))
 				{
-					response.write(
+					const name = item.Prefix?.substring(path.length - 1);
+
+					if (name)
+					{
+						response.write(
 `     <tr class="directory">
-		<td class="name"><a href="../${item.Prefix?.substring(path.length - 1)}?accessKey=${info!.accessKey
-			}">${item.Prefix?.substring(path.length - 1)}</a></td>
+		<td class="name"><a href="${name}?accessKey=${info!.accessKey}">${name}</a></td>
 		<td></td>
-		<td class="modified">15/02/2024 11:16:14 +00:00</td>
-		</tr>
+		<td class="modified"></td>
+	  </tr>
 `);
+					}
 				}
 					
 				last = item.Prefix;
@@ -187,14 +192,18 @@ app.get('*', async (request, response, next) =>
 			{
 				if (item.Key && info?.match?.(item.Key))
 				{
-					response.write(
+					const name = item.Key?.substring(path.length - 1);
+
+					if (name)
+					{
+						response.write(
 `      <tr class="file">
-        <td class="name"><a href="./${item.Key?.substring(path.length - 1)}?accessKey=${info!.accessKey}">${
-			item.Key?.substring(path.length - 1)}</a></td>
+        <td class="name"><a href="${name}?accessKey=${info!.accessKey}">${name}</a></td>
         <td class="length">${item.Size?.toLocaleString()}</td>
         <td class="modified">${item.LastModified?.toLocaleString()}</td>
       </tr>
 `);
+					}
 				}
 
 				last = item.Key;
