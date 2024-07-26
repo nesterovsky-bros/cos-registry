@@ -10,7 +10,7 @@ const error = (message: string) => { throw message };
 
 // Express.
 const app = express();
-const port = Number.isInteger(process.env.PORT) ? Number(process.env.PORT) : 3000;
+const port = Number.isInteger(Number(process.env.PORT)) ? Number(process.env.PORT) : 3000;
 
 // Authorization.
 const imaApiUrl = process.env.IAM_API_URL ?? error("No IAM_API_URL is defined.");
