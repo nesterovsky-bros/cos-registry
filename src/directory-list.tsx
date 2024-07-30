@@ -27,7 +27,10 @@ ${render(tableHead())}
 
 	for await(let item of listObjects(path, authInfo))
 	{
-		response.write(render(row(item)));
+        if (item.name)
+        {
+            response.write(render(row(item)));
+        }
 	}
 
 	response.write(
