@@ -24,10 +24,17 @@ ${render(bodyHeader())}
 ${render(tableHead())}
 <tbody>
 `);
+    if (path === "/")
+    {
+        response.write(render(row({ name: "api/", selecable: false })));
+    }
 
-	for await(let item of listObjects(path, authInfo))
+	for await(let item of listObjects(path.substring(1), authInfo))
 	{
-		response.write(render(row(item)));
+        if (item.name)
+        {
+            response.write(render(row(item)));
+        }
 	}
 
 	response.write(
@@ -311,7 +318,10 @@ init();
         const element = 
     <tr class={item.file ? "file" : "directory"}>
         <td>
+        {
+            item.selecable == false ? null :
             <input type="checkbox" name="path" value={item.name} class="selection" {...{onclick: "toggleSelection()"}}/>
+        }
         </td>
         <td class="name"><a href={item.name + accessKeySuffix}>{item.name}</a></td>
         <td class="length">{item.size?.toLocaleString()}</td>

@@ -20,7 +20,7 @@ export type GetObjectOutput = ibm.S3.Types.GetObjectOutput;
 
 export function getObject(path: string): Request<ibm.S3.Types.GetObjectOutput, ibm.AWSError>
 {
-	return s3.getObject({ Bucket: s3Bucket, Key: path.substring(1)});
+	return s3.getObject({ Bucket: s3Bucket, Key: path });
 }
 
 export function getObjectStream(path: string): stream.Readable
@@ -33,7 +33,7 @@ export async function setObjectStream(path: string, data: stream.Readable, conte
     await s3.upload(
     {
         Bucket: s3Bucket, 
-        Key: path.substring(1),
+        Key: path,
 				ContentType: contentType,
         Body: data
     }).promise();
@@ -50,7 +50,7 @@ export async function* listObjects(path: string, authInfo?: AuthInfo, nested = f
 			Bucket: s3Bucket,
 			Delimiter: nested ? undefined : "/",
 			MaxKeys: 100,
-			Prefix: path.substring(1),
+			Prefix: path,
 			StartAfter: last
 		}).promise();
 
@@ -60,7 +60,7 @@ export async function* listObjects(path: string, authInfo?: AuthInfo, nested = f
 			{
 				if (item.Prefix && (!authInfo || authInfo.match?.(item.Prefix)))
 				{
-					const name = item.Prefix.substring(path.length - 1);
+					const name = item.Prefix.substring(path.length);
 	
 					if (name)
 					{
@@ -78,7 +78,7 @@ export async function* listObjects(path: string, authInfo?: AuthInfo, nested = f
 			{
 				if (item.Key && (!authInfo || authInfo.match?.(item.Key)))
 				{
-					const name = item.Key.substring(path.length - 1);
+					const name = item.Key.substring(path.length);
 	
 					yield { name, file: true, size: item.Size, lastModified: item.LastModified };
 						
@@ -108,7 +108,7 @@ export async function deleteObjects(paths: string[])
             Bucket: s3Bucket,
             Delete: 
             {
-                Objects: paths.slice(index, 100).map(path => ({ Key: path.substring(1) }))
+                Objects: paths.slice(index, 100).map(path => ({ Key: path }))
             }
         }).promise();
     }

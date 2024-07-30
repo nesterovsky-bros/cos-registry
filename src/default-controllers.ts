@@ -2,21 +2,23 @@ import fs from "fs";
 import zlib from "node:zlib";
 import tar from "tar-stream";
 import { Express, NextFunction, Request, Response } from "express";
-import { authorize, forbidden } from "./authorize.js";
+import { authorize, forbidden, notfound } from "./authorize.js";
 import { deleteObjects, getObjectStream, listObjects, setObjectStream } from "./store.js";
 import { listDirectory } from "./directory-list.js";
 import multer from "multer";
+import { ApiEntry } from "./model/api-entry.js";
 
 const upload = multer({ dest: 'uploads/', preservePath: true })
 
-export function defaultControllers(app: Express)
+export function defaultControllers(app: Express): ApiEntry[]
 {
-	app.use("/api", forbidden);
 	app.get("/favicon.ico", authorize("read", true), favicon);
 	app.get("*", authorize("read"), read);
 	app.put("*", authorize("write"), put);	
 	app.delete("*", authorize("write"), delete_);	
 	app.post("*", authorize("read"), upload.any(), post);
+
+	return [];
 }
 
 function favicon(request: Request, response: Response) 
@@ -25,7 +27,7 @@ function favicon(request: Request, response: Response)
 
 	if (request.authInfo && request.authInfo.access !== "none")
 	{
-		getObjectStream(request.path).
+		getObjectStream(request.path.substring(1)).
 			on("error", error => (error as any)?.statusCode === 404 ? 
 				defaultFavicon(request, response) :
 				response.status((error as any)?.statusCode ?? 500).send(error.message)).
@@ -52,15 +54,15 @@ function read(request: Request, response: Response)
 	}
 	else
 	{
-		streamObject(path, response)
+		streamObject(path.substring(1), request, response);
 	}
 }
 
-function streamObject(path: string, response: Response)
+function streamObject(path: string, request: Request, response: Response)
 {
 	getObjectStream(path).
 		on("error", error => (error as any)?.statusCode === 404 ? 
-			response.status(404).send("Not Found") :
+			notfound(request, response) :
 			response.status((error as any)?.statusCode ?? 500).send(error.message)).
 		pipe(response);
 }
@@ -92,7 +94,7 @@ async function delete_(request: Request, response: Response)
 
 			if (item.file && !filepath.startsWith("api/"))
 			{
-				paths.push(filepath);	
+				paths.push(filepath.substring(1));	
 				
 				if (paths.length >= size)
 				{
@@ -140,13 +142,13 @@ async function post(request: Request, response: Response, next: NextFunction)
 			{
 				const fullpath = path + name;
 
-				for await(let item of listObjects(fullpath, request.authInfo, true))
+				for await(let item of listObjects(fullpath.substring(1), request.authInfo, true))
 				{
 					const itempath = fullpath + item.name;
 
 					if (item.file && !itempath.startsWith("api/"))
 					{
-						yield { path: itempath, size: item.size! };
+						yield { path: itempath.substring(1), size: item.size! };
 					}
 				}
 			}
@@ -227,7 +229,7 @@ async function post(request: Request, response: Response, next: NextFunction)
 
 				for await(let item of list())
 				{
-					getObjectStream(item.path).pipe(
+					getObjectStream(item.path.substring(1)).pipe(
 						pack.entry(
 						{
 							name: item.path.substring(path.length),

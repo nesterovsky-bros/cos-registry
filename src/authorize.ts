@@ -27,6 +27,11 @@ export function forbidden(request: Request, response: Response)
 	response.status(403).send("Forbidden");
 }
 
+export function notfound(request: Request, response: Response)
+{
+	response.status(404).send("Not Found");
+}
+
 export function authorize(minAccess: "read" | "write", allowUnauthorized = false)
 {
     return async (request: Request, response: Response, next: NextFunction) =>
@@ -38,7 +43,6 @@ Check:
         {
             authInfo = request.authInfo = { access: "none" };
 
-            const path = request.path;
             let accessKey = request.query.accessKey;
     
             if (typeof accessKey === "string")
@@ -165,7 +169,7 @@ Check:
 
             authInfo.match = match;
         
-            if (!match(path))
+            if (!match(request.path.substring(1)))
             {
                 break Check;
             }

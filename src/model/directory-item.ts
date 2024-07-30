@@ -4,4 +4,5 @@ export interface DirectoryItem
 	file?: boolean;
 	size?: number;
 	lastModified?: Date;
+	selecable?: boolean;
 }
