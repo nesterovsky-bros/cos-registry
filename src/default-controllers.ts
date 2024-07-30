@@ -1,4 +1,6 @@
 import fs from "fs";
+import zlib from "node:zlib";
+import tar from "tar-stream";
 import { Express, NextFunction, Request, Response } from "express";
 import { authorize, forbidden } from "./authorize.js";
 import { deleteObjects, getObjectStream, listObjects, setObjectStream } from "./store.js";
@@ -121,12 +123,20 @@ async function post(request: Request, response: Response, next: NextFunction)
 	{
 		const authInfo = request.authInfo;
 		const path = request.path;
+
+		if (!path.endsWith("/"))
+		{
+			forbidden(request, response);
+
+			return;
+		}
+
 		const paths: string[] = typeof request.body.path === "string" ? [request.body.path] :
 			Array.isArray(request.body.path) ? request.body.path : [];
 
 		async function* list() 
 		{
-			for(let name of path.length ? paths : [""])
+			for(let name of paths.length ? paths : [""])
 			{
 				const fullpath = path + name;
 
@@ -136,7 +146,7 @@ async function post(request: Request, response: Response, next: NextFunction)
 
 					if (item.file && !itempath.startsWith("api/"))
 					{
-						yield itempath;					
+						yield { path: itempath, size: item.size! };
 					}
 				}
 			}
@@ -156,9 +166,9 @@ async function post(request: Request, response: Response, next: NextFunction)
 					return;				
 				}
 
-				for await(let fullpath of list())
+				for await(let item of list())
 				{
-					fullpaths.push(fullpath);	
+					fullpaths.push(item.path);	
 					
 					if (fullpaths.length >= size)
 					{
@@ -204,9 +214,30 @@ async function post(request: Request, response: Response, next: NextFunction)
 			}
 			case "download":
 			{
-				console.log(request.body);
-				await read(request, response);
+				const name = 
+					path.substring(path.lastIndexOf("/", path.length - 2) + 1, path.length - 1) + 
+					".tar.gz";
+
+				response.set("Content-disposition", `attachment; filename=${name}`);
+				response.set("Content-type", "application/gzip");
+					
+				const pack = tar.pack();
 	
+				pack.pipe(zlib.createGzip()).pipe(response);
+
+				for await(let item of list())
+				{
+					getObjectStream(item.path).pipe(
+						pack.entry(
+						{
+							name: item.path.substring(path.length),
+							size: item.size
+						})).
+						on("error", error => response.status(500).send(error.message));
+				}
+
+				pack.finalize();
+
 				return;
 			}
 			default:

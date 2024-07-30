@@ -9,9 +9,6 @@ const port = Number.isInteger(Number(process.env.PORT)) ? Number(process.env.POR
 app.use(compression());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-
 defaultControllers(app);
 
 app.listen(port, () => console.log(`Server is running on http://localhost:${port}`));
-
-
