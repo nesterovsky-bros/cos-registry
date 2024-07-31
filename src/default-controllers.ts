@@ -10,7 +10,7 @@ import { ApiEntry } from "./model/api-entry.js";
 
 const upload = multer({ dest: 'uploads/', preservePath: true })
 
-export function defaultControllers(app: Express): ApiEntry[]
+export function defaultControllers(app: Express, siteUrl: string|undefined, apiEntires: ApiEntry[])
 {
 	app.get("/favicon.ico", authorize("read", true), favicon);
 	app.get("*", authorize("read"), read);
@@ -18,16 +18,13 @@ export function defaultControllers(app: Express): ApiEntry[]
 	app.delete("*", authorize("write"), delete_);	
 	app.post("*", authorize("read"), upload.any(), post);
 
-	const entries: ApiEntry[] =
-	[
-		{
-			name: "http",
-			url: process.env.SITE_URL ?? "/",
-			description: "Http GET, PUT, DELETE and primitive UI. Also used by maven."
-		}
-	];
-
-	return entries;}
+	apiEntires.push(
+	{
+		name: "http",
+		url: siteUrl ?? "/",
+		description: "Http GET, PUT, DELETE and primitive UI. Also used by maven."
+	});
+}
 
 function favicon(request: Request, response: Response) 
 {

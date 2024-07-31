@@ -13,10 +13,11 @@ app.use(compression());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+const siteUrl = process.env.SITE_URL;
 const apiEntires: ApiEntry[] = [];
 
-apiEntires.push(...nugetControllers(app));
-apiEntires.push(...apiControllers(app, apiEntires));
-apiEntires.push(...defaultControllers(app));
+nugetControllers(app, siteUrl, apiEntires);
+apiControllers(app, siteUrl, apiEntires);
+defaultControllers(app, siteUrl, apiEntires);
 
 app.listen(port, () => console.log(`Server is running on http://localhost:${port}`));

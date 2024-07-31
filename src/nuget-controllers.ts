@@ -3,35 +3,30 @@ import { getObjectStream, listObjects } from "./store.js";
 import { authorize, forbidden, notfound } from "./authorize.js";
 import { ApiEntry } from "./model/api-entry.js";
 
-const siteUrl = process.env.SITE_URL;
-
-export function nugetControllers(app: Express): ApiEntry[]
+export function nugetControllers(app: Express, siteUrl: string|undefined, apiEntires: ApiEntry[])
 {
 	if (!siteUrl)
 	{
 		console.warn("No site url is set.");
 
-		return [];
+		return;
 	}
 
-	app.get("/api/nuget/:feed/index.json", authorize("read"), index);
+	app.get("/api/nuget/:feed/index.json", authorize("read"), (request, response) => index(request, response, siteUrl));
 	app.get("/api/nuget/:feed/package/:lowerId/index.json", authorize("read"), packageIndex);
 	app.get("/api/nuget/:feed/package/:lowerId/:lowerVersion/:name.nupkg", authorize("read"), packageDownload);
+	
 	console.log(`Nuget controllers are registered at "${siteUrl}api/nuget/:feed/query" locations.`);
 
-	const entries: ApiEntry[] =
-	[
-		{
-			name: "nuget",
-			url: `${siteUrl}api/nuget/{feed}/index.json`,
-			description: "Nuget feeds, where {feed} is substituted with feed name."
-		}
-	];
-
-	return entries;
+	apiEntires.push(
+	{
+		name: "nuget",
+		url: `${siteUrl}api/nuget/{feed}/index.json`,
+		description: "Nuget feeds, where {feed} is substituted with feed name."
+	});
 }
 
-function index(request: Request, response: Response)
+function index(request: Request, response: Response, siteUrl: string)
 {
 	const feed = request.params.feed;
 

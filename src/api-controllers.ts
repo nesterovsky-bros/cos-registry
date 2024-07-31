@@ -1,9 +1,7 @@
 import { Express } from "express";
 import { ApiEntry } from "./model/api-entry.js";
 
-export function apiControllers(app: Express, entries?: ApiEntry[]): ApiEntry[]
+export function apiControllers(app: Express, siteUrl: string|undefined, apiEntires: ApiEntry[])
 {
-	app.use("/api", (request, response) => response.json(entries ?? []));
-
-	return [];
+	app.use("/api", (request, response) => response.json(apiEntires));
 }
