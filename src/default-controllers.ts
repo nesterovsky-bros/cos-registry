@@ -18,8 +18,16 @@ export function defaultControllers(app: Express): ApiEntry[]
 	app.delete("*", authorize("write"), delete_);	
 	app.post("*", authorize("read"), upload.any(), post);
 
-	return [];
-}
+	const entries: ApiEntry[] =
+	[
+		{
+			name: "http",
+			url: process.env.SITE_URL ?? "/",
+			description: "Http GET, PUT, DELETE and primitive UI. Also used by maven."
+		}
+	];
+
+	return entries;}
 
 function favicon(request: Request, response: Response) 
 {
@@ -60,6 +68,11 @@ function read(request: Request, response: Response)
 
 function streamObject(path: string, request: Request, response: Response)
 {
+	if (path.endsWith(".pom"))
+	{
+		response.contentType("text/xml");
+	}
+
 	getObjectStream(path).
 		on("error", error => (error as any)?.statusCode === 404 ? 
 			notfound(request, response) :
