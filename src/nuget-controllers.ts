@@ -15,29 +15,27 @@ const upload = multer({ dest: 'uploads/' })
 
 export function nugetControllers(app: Express, options: Options)
 {
-	app.get("/api/nuget/:feed/index.json", //authorize("read"), 
+	app.get("/api/nuget/:feed/index.json", authorize("read"), 
 		(request, response) => index(request, response, options));
 
-	app.get("/api/nuget/:feed/query", //authorize("read"), 
+	app.get("/api/nuget/:feed/query", authorize("read"), 
 		(request, response) => query(request, response, options));
-	app.get("/api/nuget/:feed/autocomplete", //authorize("read"), 
+	app.get("/api/nuget/:feed/autocomplete", authorize("read"), 
 		(request, response) => autocomplete(request, response, options));
 	
-	app.get("/api/nuget/:feed/package/:lowerId/index.json", //authorize("read"), 
+	app.get("/api/nuget/:feed/package/:lowerId/index.json", authorize("read"), 
 		packageIndex);
-	app.get("/api/nuget/:feed/package/:lowerId/:lowerVersion/:name.nupkg",// authorize("read"), 
+	app.get("/api/nuget/:feed/package/:lowerId/:lowerVersion/:name.nupkg", authorize("read"), 
 		packageDownload);
 
-	app.get("/api/nuget/:feed/registration/:lowerId/index.json", //authorize("read"), 
+	app.get("/api/nuget/:feed/registration/:lowerId/index.json", authorize("read"), 
 		(request, response) => registrationIndex(request, response, options));
-	app.get("/api/nuget/:feed/registration/:lowerId/page.json", //authorize("read"), 
+	app.get("/api/nuget/:feed/registration/:lowerId/page.json", authorize("read"), 
 		(request, response) => registrationPage(request, response, options));
-	app.get("/api/nuget/:feed/registration/:lowerId/:lowerVersion/index.json", //authorize("read"), 
+	app.get("/api/nuget/:feed/registration/:lowerId/:lowerVersion/index.json", authorize("read"), 
 		(request, response) => registrationLeaf(request, response, options));
 
-	app.put("/api/nuget/:feed/publish", 
-		//authHeader, authorize("write"), 
-		upload.any(), put);
+	app.put("/api/nuget/:feed/publish", authHeader, authorize("write"), upload.any(), put);
 	app.delete("/api/nuget/:feed/publish/:id/:version", authHeader, authorize("write"), delete_);
 
 	options.api.push(
