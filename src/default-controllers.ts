@@ -1,27 +1,29 @@
 import fs from "fs";
 import zlib from "node:zlib";
 import tar from "tar-stream";
-import { Express, NextFunction, Request, Response } from "express";
-import { authorize, forbidden, notfound } from "./authorize.js";
+import { Express, NextFunction, Request, response, Response } from "express";
+import { authorize, forbidden, servererror, validpath } from "./authorize.js";
 import { deleteObjects, getObjectStream, listObjects, setObjectStream } from "./store.js";
 import { listDirectory } from "./directory-list.js";
 import multer from "multer";
-import { ApiEntry } from "./model/api-entry.js";
+import { Options } from "./model/options.js";
+import { marked } from "marked";
 
 const upload = multer({ dest: 'uploads/', preservePath: true })
 
-export function defaultControllers(app: Express, siteUrl: string|undefined, apiEntires: ApiEntry[])
+export function defaultControllers(app: Express, options: Options)
 {
+	app.get("/README", (request, response) => readme(request, response, options));
 	app.get("/favicon.ico", authorize("read", true), favicon);
 	app.get("*", authorize("read"), read);
 	app.put("*", authorize("write"), put);	
 	app.delete("*", authorize("write"), delete_);	
 	app.post("*", authorize("read"), upload.any(), post);
 
-	apiEntires.push(
+	options.api.push(
 	{
 		name: "http",
-		url: siteUrl ?? "/",
+		url: options.url,
 		description: "Http GET, PUT, DELETE and primitive UI. Also used by maven."
 	});
 }
@@ -49,6 +51,22 @@ function defaultFavicon(request: Request, response: Response)
 	response.sendFile("favicon.svg", { root: import.meta.dirname });
 }
 
+
+async function readme(request: Request, response: Response, options: Options)
+{
+	const readme = await fs.promises.readFile(`${import.meta.dirname}/../README.md`, { encoding: "utf8" });
+
+	response.send(`<html lang="en">
+<head>
+	<meta charset="utf-8">
+  <title>${options.title}</title>
+</head>
+<body>
+  ${marked.parse(readme)}
+</body>
+</html>`);
+}
+
 function read(request: Request, response: Response) 
 {
 	const path = request.path;
@@ -65,15 +83,13 @@ function read(request: Request, response: Response)
 
 function streamObject(path: string, request: Request, response: Response)
 {
-	if (path.endsWith(".pom"))
+	if (path.endsWith(".pom") || path.endsWith(".nuspec"))
 	{
 		response.contentType("text/xml");
 	}
 
 	getObjectStream(path).
-		on("error", error => (error as any)?.statusCode === 404 ? 
-			notfound(request, response) :
-			response.status((error as any)?.statusCode ?? 500).send(error.message)).
+		on("error", error => servererror(request, response, error)).
 		pipe(response);
 }
 
@@ -100,11 +116,11 @@ async function delete_(request: Request, response: Response)
 
 		for await(let item of listObjects(path.substring(1), request.authInfo, true))
 		{
-			const filepath = path + item.name;
+			const filepath = (path + item.name).substring(1);
 
-			if (item.file && !filepath.startsWith("api/"))
+			if (item.file && validpath(filepath))
 			{
-				paths.push(filepath.substring(1));	
+				paths.push(filepath);	
 				
 				if (paths.length >= size)
 				{
@@ -150,13 +166,13 @@ async function post(request: Request, response: Response, next: NextFunction)
 		{
 			for(let name of paths.length ? paths : [""])
 			{
-				const fullpath = path + name;
+				const fullpath = (path + name).substring(1);
 
-				for await(let item of listObjects(fullpath.substring(1), request.authInfo, true))
+				for await(let item of listObjects(fullpath, request.authInfo, true))
 				{
 					const itempath = fullpath + item.name;
 
-					if (item.file && !itempath.startsWith("api/"))
+					if (item.file && validpath(itempath))
 					{
 						yield { path: itempath.substring(1), size: item.size! };
 					}
@@ -211,9 +227,9 @@ async function post(request: Request, response: Response, next: NextFunction)
 				{
 					for(let file of files)
 					{
-						const fullpath = path + file.originalname;
+						const fullpath = (path + file.originalname).substring(1);
 
-						if (!fullpath.startsWith("/api/"))
+						if (validpath(fullpath))
 						{
 							await setObjectStream(fullpath, fs.createReadStream(file.path));
 						}

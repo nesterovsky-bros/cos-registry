@@ -28,7 +28,7 @@ export function getObjectStream(path: string): stream.Readable
 	return getObject(path).createReadStream();
 }
 
-export async function setObjectStream(path: string, data: stream.Readable, contentType?: string)
+export async function setObjectStream(path: string, data: stream.Readable|Buffer, contentType?: string)
 {
     await s3.upload(
     {

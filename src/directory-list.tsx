@@ -5,14 +5,14 @@ import { render } from "preact-render-to-string";
 
 export async function listDirectory(request: Request, response: Response)
 {
-    const path = request.path;
-    const authInfo = request.authInfo;
-    const accessKeySuffix = authInfo?.type === "accessKey" ?
-        `?accessKey=${authInfo!.accessKey}` : ``;
+  const path = request.path;
+  const authInfo = request.authInfo;
+  const accessKeySuffix = authInfo?.type === "accessKey" ?
+    `?accessKey=${authInfo!.accessKey}` : ``;
 
-    response.type("html");
+  response.type("html");
 
-    response.write(
+  response.write(
 `<html lang="en">
 ${render(head())}
 <body>
@@ -24,17 +24,18 @@ ${render(bodyHeader())}
 ${render(tableHead())}
 <tbody>
 `);
-    if (path === "/")
-    {
-        response.write(render(row({ name: "api/", selecable: false })));
-    }
+  if (path === "/")
+  {
+    response.write(render(row({ name: "README", selecable: false })));
+    response.write(render(row({ name: "api/", selecable: false })));
+  }
 
 	for await(let item of listObjects(path.substring(1), authInfo))
 	{
-        if (item.name)
-        {
-            response.write(render(row(item)));
-        }
+    if (item.name)
+    {
+      response.write(render(row(item)));
+    }
 	}
 
 	response.write(
@@ -46,9 +47,9 @@ ${render(script())}
 
 	response.end();
 
-    function head()
-    {
-        const style = 
+  function head()
+  {
+    const style = 
 `
 body 
 {
@@ -115,19 +116,19 @@ a { color:#1ba1e2;text-decoration:none; }
 a:hover { color:#13709e;text-decoration:underline; }
 `;
 
-        const element = 
+    const element = 
 <head>
-    <base href={path}/>
-    <title>Index of {path}</title>
-    <style dangerouslySetInnerHTML={{ __html:style }}></style>
+  <base href={path}/>
+  <title>Index of {path}</title>
+  <style dangerouslySetInnerHTML={{ __html:style }}></style>
 </head>;
 
-        return element;
-    }
+    return element;
+  }
 
-    function script()
-    {
-        const script = `
+  function script()
+  {
+    const script = `
 function toggleSelections()
 {
 	const selections = document.querySelector("#index .selections");
@@ -167,94 +168,94 @@ function getSelection()
 
 function deleteSelection()
 {
-    const form = document.getElementById("main");
-    const action = document.getElementById("action");
-    const files = document.getElementById("files");
+  const form = document.getElementById("main");
+  const action = document.getElementById("action");
+  const files = document.getElementById("files");
 
-    if (!form || !action)
-    {
-        return;
-    }
+  if (!form || !action)
+  {
+    return;
+  }
 
 	if (!getSelection().length || !confirm("Please confirm deletion of files or folders."))
 	{
 		return;
 	}
 
-    if (files)
-    {
-        files.disabled = true;
-    }
+  if (files)
+  {
+    files.disabled = true;
+  }
 
-    action.value = "delete";
-    form.submit();
-    history.replaceState(null, "", location.url);
+  action.value = "delete";
+  form.submit();
+  history.replaceState(null, "", location.url);
 }
 
 async function download(folder)
 {
-    const form = document.getElementById("main");
-    const action = document.getElementById("action");
-    const files = document.getElementById("files");
+  const form = document.getElementById("main");
+  const action = document.getElementById("action");
+  const files = document.getElementById("files");
 
-    if (!form || !action)
-    {
-        return;
-    }
+  if (!form || !action)
+  {
+    return;
+  }
 
-    if (files)
-    {
-        files.disabled = true;
-    }
+  if (files)
+  {
+    files.disabled = true;
+  }
 
-    action.value = "download";
-    form.submit();
-    history.replaceState(null, "", location.url);
+  action.value = "download";
+  form.submit();
+  history.replaceState(null, "", location.url);
 }
 
 function upload(folder)
 {
-    const form = document.getElementById("main");
-    const action = document.getElementById("action");
-    const files = document.getElementById("files");
+  const form = document.getElementById("main");
+  const action = document.getElementById("action");
+  const files = document.getElementById("files");
 
-    if (!form || !action || !files)
-    {
-        return;
-    }
+  if (!form || !action || !files)
+  {
+    return;
+  }
 
-    files.disabled = false;
-    
-    if ("webkitdirectory" in files)
-    {
-        files.webkitdirectory = !!folder;
-    }
+  files.disabled = false;
+  
+  if ("webkitdirectory" in files)
+  {
+    files.webkitdirectory = !!folder;
+  }
 
-    const newFiles = files.cloneNode();
+  const newFiles = files.cloneNode();
 
-    files.parentNode.replaceChild(newFiles, files);
-    action.value = "upload";
-    newFiles.click();
+  files.parentNode.replaceChild(newFiles, files);
+  action.value = "upload";
+  newFiles.click();
 }
 
 function onFilesChange()
 {
-    const form = document.getElementById("main");
-    const action = document.getElementById("action");
-    const files = document.getElementById("files");
+  const form = document.getElementById("main");
+  const action = document.getElementById("action");
+  const files = document.getElementById("files");
 
-    if (!form || !action || !files)
-    {
-        return;
-    }
+  if (!form || !action || !files)
+  {
+    return;
+  }
 
-    if (files.disabled || action.value !== "upload" || !files.files.length)
-    {
-        return;
-    }
+  if (files.disabled || action.value !== "upload" || !files.files.length)
+  {
+    return;
+  }
 
-    form.submit();
-    history.replaceState(null, "", location.url);
+  form.submit();
+  history.replaceState(null, "", location.url);
 }
 
 function init()
@@ -264,70 +265,70 @@ function init()
 
   if (uploadFolderButton && uploadFilesInput && !("webkitdirectory" in uploadFilesInput))
   {
-    uploadFolderButton.hidden = true;
+  uploadFolderButton.hidden = true;
   }
 
   toggleSelection();
 }
 
 init();
-`;                
+`;        
 
-        return <script dangerouslySetInnerHTML={{ __html:script}}></script>;
-    }
+    return <script dangerouslySetInnerHTML={{ __html:script}}></script>;
+  }
 
-    function bodyHeader()
-    {
-        const element = 
+  function bodyHeader()
+  {
+    const element = 
 <header id="header">
 	<h1>Index of {
 	path.substring(0, path.length - 1).split("/").map((part, index, parts) =>
 		<><a href={`${'../'.repeat(parts.length - index - 1)}${accessKeySuffix}`}>{part}/</a> </>)}
 	</h1>
 	<div class="toolbar">
-        <button id="downloadFile" type="button" {...{onclick: "download()"}}>Download</button>
-        {authInfo!.access !== "write" ? null :
-        <>
-        <button id="uploadFile" type="button" {...{onclick: "upload()"}}>Upload</button>
-        <button id="uploadFolder" type="button" {...{onclick: "upload(true)"}}>Upload folder</button>
-        <button id="delete" type="button" {...{onclick: "deleteSelection()"}} disabled>Delete</button>
-        </>}
+    <button id="downloadFile" type="button" {...{onclick: "download()"}}>Download</button>
+    {authInfo!.access !== "write" ? null :
+    <>
+    <button id="uploadFile" type="button" {...{onclick: "upload()"}}>Upload</button>
+    <button id="uploadFolder" type="button" {...{onclick: "upload(true)"}}>Upload folder</button>
+    <button id="delete" type="button" {...{onclick: "deleteSelection()"}} disabled>Delete</button>
+    </>}
 	</div>
 </header>
 
-        return element;
-    }
+    return element;
+  }
 
-    function tableHead()
-    {
-        const element = 
+  function tableHead()
+  {
+    const element = 
 <thead>
-    <tr>
-        <th><input type="checkbox" class="selections" {...{onclick: "toggleSelections()"}}/></th>
-        <th>Name</th>
-        <th>Size</th>
-        <th>Last Modified</th>
-    </tr>
+  <tr>
+    <th><input type="checkbox" class="selections" {...{onclick: "toggleSelections()"}}/></th>
+    <th>Name</th>
+    <th>Size</th>
+    <th>Last Modified</th>
+  </tr>
 </thead>;
 
-        return element;
-    }
+    return element;
+  }
 
-    function row(item: DirectoryItem) 
+  function row(item: DirectoryItem) 
+  {
+    const element = 
+  <tr class={item.file ? "file" : "directory"}>
+    <td>
     {
-        const element = 
-    <tr class={item.file ? "file" : "directory"}>
-        <td>
-        {
-            item.selecable == false ? null :
-            <input type="checkbox" name="path" value={item.name} class="selection" {...{onclick: "toggleSelection()"}}/>
-        }
-        </td>
-        <td class="name"><a href={item.name + accessKeySuffix}>{item.name}</a></td>
-        <td class="length">{item.size?.toLocaleString()}</td>
-        <td class="modified">{item.lastModified?.toLocaleString()}</td>
-    </tr>;
-    
-        return element;
-    } 
+      item.selecable == false ? null :
+      <input type="checkbox" name="path" value={item.name} class="selection" {...{onclick: "toggleSelection()"}}/>
+    }
+    </td>
+    <td class="name"><a href={item.name + accessKeySuffix}>{item.name}</a></td>
+    <td class="length">{item.size?.toLocaleString()}</td>
+    <td class="modified">{item.lastModified?.toLocaleString()}</td>
+  </tr>;
+  
+    return element;
+  } 
 }

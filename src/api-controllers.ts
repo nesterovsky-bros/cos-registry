@@ -1,7 +1,7 @@
 import { Express } from "express";
-import { ApiEntry } from "./model/api-entry.js";
+import { Options } from "./model/options.js";
 
-export function apiControllers(app: Express, siteUrl: string|undefined, apiEntires: ApiEntry[])
+export function apiControllers(app: Express, options: Options)
 {
-	app.use("/api", (request, response) => response.json(apiEntires));
+	app.use("/api", (request, response) => response.json(options.api));
 }
