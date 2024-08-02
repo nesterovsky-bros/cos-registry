@@ -25,4 +25,10 @@ nugetControllers(app, options);
 apiControllers(app, options);
 defaultControllers(app, options);
 
-app.listen(port, () => console.log(`Server is running on http://localhost:${port}`));
+const server = app.listen(port, () => console.log(`Server is running on http://localhost:${port}`));
+
+process.on('SIGTERM', () => 
+{
+  console.info('SIGTERM signal received.');
+  server.close(() => console.log('Http server closed.'));
+});
