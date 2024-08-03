@@ -4,16 +4,14 @@ import tar from "tar-stream";
 import { Express, NextFunction, Request, Response } from "express";
 import { authenticate, authorize, forbidden, matchrole, servererror, validpath } from "./authorize.js";
 import { deleteObjects, getObjectStream, listObjects, setObjectStream } from "./store.js";
-import { listDirectory } from "./directory-list.js";
 import multer from "multer";
-import { marked } from "marked";
+import { listDirectory } from "./directory-list.js";
 import { options } from "./options.js";
 
 const upload = multer({ dest: 'uploads/', preservePath: true })
 
 export function defaultControllers(app: Express)
 {
-	app.get("/README", readme);
 	app.get("/favicon.ico", authenticate, favicon);
 	app.get("*", authorize("reader"), read);
 	app.put("*", authorize("writer"), put);	
@@ -49,31 +47,6 @@ function favicon(request: Request, response: Response)
 function defaultFavicon(_: Request, response: Response)
 {
 	response.sendFile("favicon.svg", { root: import.meta.dirname });
-}
-
-async function readme(_: Request, response: Response)
-{
-	const readme = await fs.promises.
-		readFile(`${import.meta.dirname}/../README.md`, { encoding: "utf8" });
-
-	response.send(`<html lang="en">
-<head>
-	<meta charset="utf-8">
-  <title>${options.title}</title>
-	<style>
-.copyright
-{
-  color: rgb(78, 78, 78);
-  font-size: small;
-}	
-	</style>
-</head>
-<body>
-  ${marked.parse(readme)}
-<hr>
-<div class="copyright">©2024 A&V. <a href="https://github.com/nesterovsky-bros/cos-registry/blob/main/LICENSE">MIT License</a></div>
-</body>
-</html>`);
 }
 
 function read(request: Request, response: Response) 

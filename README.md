@@ -50,5 +50,4 @@ It should contain valid JSON object in format:
 
 # Developer
 
-Sources are available in the [GitHub](https://github.com/nesterovsky-bros/cos-registry).
 There are more environment variable to play with.
