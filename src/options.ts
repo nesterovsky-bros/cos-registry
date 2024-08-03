@@ -46,6 +46,8 @@ export const options =
   authCacheSize: toNumber(process.env.AUTH_CACHE_SIZE) ?? 1000,
   authCacheExpirationInMinutes: toNumber(process.env.AUTH_CATCH_TTL_MINUTES) ?? 10 * 60 * 1000,
 
+  github: process.env.GITHUB_SOURCES ?? "https://github.com/nesterovsky-bros/cos-registry",
+
   api: [] as 
   {
     name: string;

@@ -5,4 +5,5 @@ export interface DirectoryItem
 	size?: number;
 	lastModified?: Date;
 	selecable?: boolean;
+	href?: string;
 }

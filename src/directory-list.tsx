@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { DirectoryItem } from "./model/directory-item.js";
 import { listObjects } from "./store.js";
 import { render } from "preact-render-to-string";
+import { options } from "./options.js";
 
 export async function listDirectory(request: Request, response: Response)
 {
@@ -26,7 +27,7 @@ ${render(tableHead())}
 `);
   if (path === "/")
   {
-    response.write(render(row({ name: "README", selecable: false })));
+    response.write(render(row({ name: "README", selecable: false, href: `${options.github}#readme` })));
     response.write(render(row({ name: "api/", selecable: false })));
   }
 
@@ -44,7 +45,7 @@ ${render(tableHead())}
 </form>
 ${render(script())}
 <hr>
-<div class="copyright">©2024 A&V. <a href="https://github.com/nesterovsky-bros/cos-registry/blob/main/LICENSE">MIT License</a></div>
+<div class="copyright">©2024 A&V. <a href="${options.github}?tab=MIT-1-ov-file#readme">MIT License</a></div>
 </body></html>`);
 
 	response.end();
@@ -332,7 +333,7 @@ init();
       <input type="checkbox" name="path" value={item.name} class="selection" {...{onclick: "toggleSelection()"}}/>
     }
     </td>
-    <td class="name"><a href={item.name + accessKeySuffix}>{item.name}</a></td>
+    <td class="name"><a href={item.href ?? item.name + accessKeySuffix}>{item.name}</a></td>
     <td class="length">{item.size?.toLocaleString()}</td>
     <td class="modified">{item.lastModified?.toLocaleString()}</td>
   </tr>;

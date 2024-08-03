@@ -12,7 +12,8 @@ async function getEndpoint(): Promise<string|undefined>
 	return data?.["service-endpoints"]?.
 		["regional"]?.
 		[options.region]?.
-		[options.local ? "public" : "private"]?.
+		//[options.local ? "public" : "private"]?.
+		["public"]?.
 		[options.region];
 }
 
