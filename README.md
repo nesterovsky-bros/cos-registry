@@ -1,7 +1,7 @@
 # Registry application
 
 Registry is a web application with primitive UI to support virtual file system.  
-Supports HTTP GET, PUT, and DELETE, used by maven, to browse and maniputate the data.  
+Supports HTTP GET, PUT, and DELETE, used by maven, to browse and manipulate the data.  
 Implements Nuget and NPM REST API.  
 Access to the application is authorized.
 
