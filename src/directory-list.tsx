@@ -7,7 +7,7 @@ export async function listDirectory(request: Request, response: Response)
 {
   const path = request.path;
   const authInfo = request.authInfo;
-  const accessKeySuffix = authInfo?.type === "accessKey" ?
+  const accessKeySuffix = authInfo?.from === "accessKey" ?
     `?accessKey=${authInfo!.accessKey}` : ``;
 
   response.type("html");
@@ -43,6 +43,8 @@ ${render(tableHead())}
 </table>
 </form>
 ${render(script())}
+<hr>
+<div class="copyright">©2024 A&V. <a href="https://github.com/nesterovsky-bros/cos-registry/blob/main/LICENSE">MIT License</a></div>
 </body></html>`);
 
 	response.end();
@@ -114,6 +116,12 @@ body
 #index td.length, td.modified { text-align:right; }
 a { color:#1ba1e2;text-decoration:none; }
 a:hover { color:#13709e;text-decoration:underline; }
+
+.copyright 
+{
+  color: rgb(78, 78, 78);
+  font-size: small;
+}
 `;
 
     const element = 
@@ -287,7 +295,7 @@ init();
 	</h1>
 	<div class="toolbar">
     <button id="downloadFile" type="button" {...{onclick: "download()"}}>Download</button>
-    {authInfo!.access !== "write" ? null :
+    {authInfo!.role !== "writer" && authInfo!.role !== "owner" ? null :
     <>
     <button id="uploadFile" type="button" {...{onclick: "upload()"}}>Upload</button>
     <button id="uploadFolder" type="button" {...{onclick: "upload(true)"}}>Upload folder</button>

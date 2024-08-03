@@ -2,25 +2,32 @@ import * as stream from 'stream';
 import ibm, { Request } from "ibm-cos-sdk";
 import { AuthInfo } from './model/auth.js';
 import { DirectoryItem } from './model/directory-item.js';
+import { options } from './options.js';
 
-const error = (message: string) => { throw message };
-
-// S3
-const s3Bucket = process.env.COS_BUCKET ?? error("No COS_BUCKET is defined.");
+async function getEndpoint(): Promise<string|undefined>
+{
+	const response = await fetch(options.cos.endpoints);
+	const data = response.ok && await response.json();
+	
+	return data?.["service-endpoints"]?.
+		["regional"]?.
+		[options.region]?.
+		[options.local ? "public" : "private"]?.
+		[options.region];
+}
 
 const s3 = new ibm.S3(
 {
-	endpoint: process.env.COS_ENDPOINT ?? error("No COS_ENDPOINT is defined."),
-	apiKeyId: process.env.COS_API_KEY ?? error("No COS_API_KEY is defined."),
-	serviceInstanceId: process.env.COS_RESOURCE_INSTANCE_ID ?? 
-		error("No COS_RESOURCE_INSTANCE_ID is defined.")
+	endpoint: await getEndpoint(),
+	apiKeyId: options.cos.apiKey,
+	serviceInstanceId: options.cos.resourceInstanceId
 });
 
 export type GetObjectOutput = ibm.S3.Types.GetObjectOutput;
 
 export function getObject(path: string): Request<ibm.S3.Types.GetObjectOutput, ibm.AWSError>
 {
-	return s3.getObject({ Bucket: s3Bucket, Key: path });
+	return s3.getObject({ Bucket: options.bucket, Key: path });
 }
 
 export function getObjectStream(path: string): stream.Readable
@@ -30,13 +37,13 @@ export function getObjectStream(path: string): stream.Readable
 
 export async function setObjectStream(path: string, data: stream.Readable|Buffer, contentType?: string)
 {
-    await s3.upload(
-    {
-        Bucket: s3Bucket, 
-        Key: path,
-				ContentType: contentType,
-        Body: data
-    }).promise();
+	await s3.upload(
+	{
+		Bucket: options.bucket, 
+		Key: path,
+		ContentType: contentType,
+		Body: data
+	}).promise();
 }
 
 export async function* listObjects(path: string, authInfo?: AuthInfo, nested = false): AsyncGenerator<DirectoryItem>
@@ -47,7 +54,7 @@ export async function* listObjects(path: string, authInfo?: AuthInfo, nested = f
 	{
 		const result = await s3.listObjectsV2(
 		{
-			Bucket: s3Bucket,
+			Bucket: options.bucket,
 			Delimiter: nested ? undefined : "/",
 			MaxKeys: 100,
 			Prefix: path,
@@ -96,20 +103,20 @@ export async function* listObjects(path: string, authInfo?: AuthInfo, nested = f
 
 export async function deleteObjects(paths: string[])
 {
-    if (!paths?.length)
-    {
-        return;        
-    }
+	if (!paths?.length)
+	{
+		return;        
+	}
 
-    for(let index = 0, step = 100; index < paths.length; index += step)
-    {
-        await s3.deleteObjects(
-        {
-            Bucket: s3Bucket,
-            Delete: 
-            {
-                Objects: paths.slice(index, 100).map(path => ({ Key: path }))
-            }
-        }).promise();
-    }
+	for(let index = 0, step = 100; index < paths.length; index += step)
+	{
+		await s3.deleteObjects(
+		{
+			Bucket: options.bucket,
+			Delete: 
+			{
+				Objects: paths.slice(index, 100).map(path => ({ Key: path }))
+			}
+		}).promise();
+	}
 }

@@ -6,37 +6,28 @@ import { deleteObjects, getObject, getObjectStream, listObjects, setObjectStream
 import { authorize, forbidden, notfound, servererror } from "./authorize.js";
 import { NextFunction } from "express-serve-static-core";
 import { XMLParser } from "fast-xml-parser";
-import { Nuspec } from "./model/nuspec.js";
-import { Options } from "./model/options.js";
 import multer from "multer";
+import { options } from "./options.js";
 
 const xmlParser = new XMLParser({ignoreAttributes: false});
 const upload = multer({ dest: 'uploads/' })
 
-export function nugetControllers(app: Express, options: Options)
+export function nugetControllers(app: Express)
 {
-	app.get("/api/nuget/:feed/index.json", authorize("read"), 
-		(request, response) => index(request, response, options));
+	app.get("/api/nuget/:feed/index.json", authorize("reader"), index);
 
-	app.get("/api/nuget/:feed/query", authorize("read"), 
-		(request, response) => query(request, response, options));
-	app.get("/api/nuget/:feed/autocomplete", authorize("read"), 
-		(request, response) => autocomplete(request, response, options));
+	app.get("/api/nuget/:feed/query", authorize("reader"), query);
+	app.get("/api/nuget/:feed/autocomplete", authorize("reader"), autocomplete);
 	
-	app.get("/api/nuget/:feed/package/:lowerId/index.json", authorize("read"), 
-		packageIndex);
-	app.get("/api/nuget/:feed/package/:lowerId/:lowerVersion/:name.nupkg", authorize("read"), 
-		packageDownload);
+	app.get("/api/nuget/:feed/package/:lowerId/index.json", authorize("reader"), packageIndex);
+	app.get("/api/nuget/:feed/package/:lowerId/:lowerVersion/:name.nupkg", authorize("reader"), packageDownload);
 
-	app.get("/api/nuget/:feed/registration/:lowerId/index.json", authorize("read"), 
-		(request, response) => registrationIndex(request, response, options));
-	app.get("/api/nuget/:feed/registration/:lowerId/page.json", authorize("read"), 
-		(request, response) => registrationPage(request, response, options));
-	app.get("/api/nuget/:feed/registration/:lowerId/:lowerVersion/index.json", authorize("read"), 
-		(request, response) => registrationLeaf(request, response, options));
+	app.get("/api/nuget/:feed/registration/:lowerId/index.json", authorize("reader"), registrationIndex);
+	app.get("/api/nuget/:feed/registration/:lowerId/page.json", authorize("reader"), registrationPage);
+	app.get("/api/nuget/:feed/registration/:lowerId/:lowerVersion/index.json", authorize("reader"), registrationLeaf);
 
-	app.put("/api/nuget/:feed/publish", authHeader, authorize("write"), upload.any(), put);
-	app.delete("/api/nuget/:feed/publish/:id/:version", authHeader, authorize("write"), delete_);
+	app.put("/api/nuget/:feed/publish", authHeader, authorize("writer"), upload.any(), put);
+	app.delete("/api/nuget/:feed/publish/:id/:version", authHeader, authorize("writer"), delete_);
 
 	options.api.push(
 	{
@@ -44,6 +35,40 @@ export function nugetControllers(app: Express, options: Options)
 		url: `${options.url}api/nuget/{feed}/index.json`,
 		description: "Nuget feeds, where {feed} is substituted with feed name."
 	});
+}
+
+interface Nuspec
+{
+  id: string;
+  version: string;
+  authors?: string|null;
+  readme?: string|null;
+  copyright?: string|null;
+  requireLicenseAcceptance?: boolean|null;
+  license?: string|null; 
+  licenseUrl?: string|null; 
+  title?: string|null;
+  description?: string|null;
+  icon?: string|null;
+  releaseNotes?: string|null;
+  tags?: string[]|null;
+  projectUrl?: string|null;
+  repository?: 
+  {
+    type?: string|null;
+    url?: string|null;
+    commit?: string|null;
+  }|null;
+  dependencyGroups?:
+  {
+    targetFramework: string;
+    dependencies?:
+    {
+      id: string;
+      version: string;
+      exclude?: string|null;
+    }[]|null
+  }[]|null;
 }
 
 // {
@@ -64,7 +89,7 @@ function authHeader(request: Request, response: Response, next: NextFunction)
 	next();
 }
 
-function index(request: Request, response: Response, options: Options)
+function index(request: Request, response: Response)
 {
 	const feed = request.params.feed;
 
@@ -124,7 +149,7 @@ function index(request: Request, response: Response, options: Options)
 	});
 }
 
-async function query(request: Request, response: Response, options: Options)
+async function query(request: Request, response: Response)
 {
 	const feed = request.params.feed;
 	const q = typeof request.query.q === "string" ? request.query.q.replace(" ", "") : null;
@@ -184,7 +209,7 @@ async function query(request: Request, response: Response, options: Options)
 	});
 }
 
-async function autocomplete(request: Request, response: Response, options: Options)
+async function autocomplete(request: Request, response: Response)
 {
 	const feed = request.params.feed;
 	const q = typeof request.query.q === "string" ? request.query.q.replace(" ", "") : null;
@@ -257,7 +282,7 @@ function streamObject(path: string, request: Request, response: Response)
 		pipe(response);
 }
 
-async function registrationIndex(request: Request, response: Response, options: Options)
+async function registrationIndex(request: Request, response: Response)
 {
 	const feed = request.params.feed;
 	const lowerId = request.params.lowerId.toLowerCase();
@@ -332,7 +357,7 @@ async function registrationIndex(request: Request, response: Response, options: 
 	}
 }
 
-async function registrationPage(request: Request, response: Response, options: Options)
+async function registrationPage(request: Request, response: Response)
 {
 	const feed = request.params.feed;
 	const lowerId = request.params.lowerId.toLowerCase();
@@ -389,7 +414,7 @@ async function registrationPage(request: Request, response: Response, options: O
 	}
 }
 
-async function registrationLeaf(request: Request, response: Response, options: Options)
+async function registrationLeaf(request: Request, response: Response)
 {
 	const feed = request.params.feed;
 	const lowerId = request.params.lowerId.toLowerCase();

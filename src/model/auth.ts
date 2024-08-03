@@ -1,13 +1,3 @@
-export interface AuthInfo
-{
-	apiKey?: Apikey|null,
-	accessKey?: string|null;
-	access: "read" | "write" | "none";
-	settings?: any;
-	match?: (path: string) => boolean;
-	type?: "accessKey"|"authHeader";
-}
-
 export interface Apikey
 {
 	id: string,
@@ -17,6 +7,18 @@ export interface Apikey
 	description?: string,
 	iam_id: string,
 };
+
+export type Role = "none" | "reader" | "writer" | "owner";
+
+export interface AuthInfo
+{
+	apiKey?: Apikey|null,
+	accessKey?: string|null;
+	role: Role;
+	settings?: any;
+	match?: (path: string) => boolean;
+	from?: "accessKey"|"authHeader";
+}
 
 declare global 
 {
@@ -28,3 +30,4 @@ declare global
 		}
   }
 }
+

@@ -1,24 +1,24 @@
 import fs from "fs";
 import zlib from "node:zlib";
 import tar from "tar-stream";
-import { Express, NextFunction, Request, response, Response } from "express";
-import { authorize, forbidden, servererror, validpath } from "./authorize.js";
+import { Express, NextFunction, Request, Response } from "express";
+import { authenticate, authorize, forbidden, matchrole, servererror, validpath } from "./authorize.js";
 import { deleteObjects, getObjectStream, listObjects, setObjectStream } from "./store.js";
 import { listDirectory } from "./directory-list.js";
 import multer from "multer";
-import { Options } from "./model/options.js";
 import { marked } from "marked";
+import { options } from "./options.js";
 
 const upload = multer({ dest: 'uploads/', preservePath: true })
 
-export function defaultControllers(app: Express, options: Options)
+export function defaultControllers(app: Express)
 {
-	app.get("/README", (request, response) => readme(request, response, options));
-	app.get("/favicon.ico", authorize("read", true), favicon);
-	app.get("*", authorize("read"), read);
-	app.put("*", authorize("write"), put);	
-	app.delete("*", authorize("write"), delete_);	
-	app.post("*", authorize("read"), upload.any(), post);
+	app.get("/README", readme);
+	app.get("/favicon.ico", authenticate, favicon);
+	app.get("*", authorize("reader"), read);
+	app.put("*", authorize("writer"), put);	
+	app.delete("*", authorize("writer"), delete_);	
+	app.post("*", authorize("reader"), upload.any(), post);
 
 	options.api.push(
 	{
@@ -32,12 +32,12 @@ function favicon(request: Request, response: Response)
 {
 	response.set("Cache-Control", "max-age=604800");
 
-	if (request.authInfo && request.authInfo.access !== "none")
+	if (matchrole(request.authInfo, "reader"))
 	{
 		getObjectStream(request.path.substring(1)).
 			on("error", error => (error as any)?.statusCode === 404 ? 
 				defaultFavicon(request, response) :
-				response.status((error as any)?.statusCode ?? 500).send(error.message)).
+				servererror(request, response, error)).
 			pipe(response);
 	}
 	else
@@ -46,23 +46,32 @@ function favicon(request: Request, response: Response)
 	}
 }
 
-function defaultFavicon(request: Request, response: Response)
+function defaultFavicon(_: Request, response: Response)
 {
 	response.sendFile("favicon.svg", { root: import.meta.dirname });
 }
 
-
-async function readme(request: Request, response: Response, options: Options)
+async function readme(_: Request, response: Response)
 {
-	const readme = await fs.promises.readFile(`${import.meta.dirname}/../README.md`, { encoding: "utf8" });
+	const readme = await fs.promises.
+		readFile(`${import.meta.dirname}/../README.md`, { encoding: "utf8" });
 
 	response.send(`<html lang="en">
 <head>
 	<meta charset="utf-8">
   <title>${options.title}</title>
+	<style>
+.copyright
+{
+  color: rgb(78, 78, 78);
+  font-size: small;
+}	
+	</style>
 </head>
 <body>
   ${marked.parse(readme)}
+<hr>
+<div class="copyright">©2024 A&V. <a href="https://github.com/nesterovsky-bros/cos-registry/blob/main/LICENSE">MIT License</a></div>
 </body>
 </html>`);
 }
@@ -187,7 +196,7 @@ async function post(request: Request, response: Response, next: NextFunction)
 		{
 			case "delete":
 			{
-				if (authInfo?.access !== "write")
+				if (authInfo?.role !== "writer" && authInfo?.role !== "owner")
 				{
 					forbidden(request, response);
 			
@@ -216,7 +225,7 @@ async function post(request: Request, response: Response, next: NextFunction)
 			}
 			case "upload":
 			{
-				if (authInfo?.access !== "write")
+				if (authInfo?.role !== "writer" && authInfo?.role !== "owner")
 				{
 					forbidden(request, response);
 			

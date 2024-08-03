@@ -1,12 +1,8 @@
 import { Express } from "express";
-import { Options } from "./model/options.js";
-import { authorize } from "./authorize.js";
+import { options } from "./options.js";
 
-export function apiControllers(app: Express, options: Options)
+export function apiControllers(app: Express)
 {
-	app.get("/api/env", 
-		authorize("owner"),
-		(request, response) => response.json(process.env));
-
-	app.use("/api", (request, response) => response.json(options.api));
+	//app.get("/api/env", authorize("owner"), (_, response) => response.json(process.env));
+	app.use("/api", (_, response) => response.json(options.api));
 }
