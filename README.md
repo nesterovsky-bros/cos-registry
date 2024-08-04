@@ -48,7 +48,7 @@ Given a url and an access token users configure https endpoints in maven, nuget,
 - Don't expose it as a static site  
   <img src="https://github.com/user-attachments/assets/57c5c11c-5d26-419f-a2e5-a0a4d3ad9387" width="400">
 
-- If after creation you're lost then go to Resource list and
+- If after creation you're lost then go to Resource list and  
   <img src="https://github.com/user-attachments/assets/57220b8b-3ed4-4228-ac45-8bf64a41aaf7" width="200">
 
 - select storage
