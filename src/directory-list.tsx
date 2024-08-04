@@ -3,6 +3,7 @@ import { DirectoryItem } from "./model/directory-item.js";
 import { listObjects } from "./store.js";
 import { render } from "preact-render-to-string";
 import { options } from "./options.js";
+import { matchrole } from "./authorize.js";
 
 export async function listDirectory(request: Request, response: Response)
 {
@@ -25,6 +26,7 @@ ${render(bodyHeader())}
 ${render(tableHead())}
 <tbody>
 `);
+
   if (path === "/")
   {
     response.write(render(row({ name: "README", selecable: false, href: `${options.github}#readme` })));
@@ -52,8 +54,7 @@ ${render(script())}
 
   function head()
   {
-    const style = 
-`
+    const style = `
 body 
 {
 	font-family: sans-serif;
@@ -62,15 +63,11 @@ body
 
 #header
 {
-  display: flex;
-  align-items: center;
-  gap: .5em;
   margin: 0;
 }
 
 #header h1 
 {
-  flex-grow: 1;
   font-family: sans-serif;
   font-size: 28px;
   font-weight: 100;
@@ -138,6 +135,8 @@ a:hover { color:#13709e;text-decoration:underline; }
   function script()
   {
     const script = `
+const writer = ${matchrole(authInfo, "writer")};
+
 function toggleSelections()
 {
 	const selections = document.querySelector("#index .selections");
@@ -146,7 +145,11 @@ function toggleSelections()
 	const checked = selections.checked;
 
 	selectionSelector.forEach(element => element.checked = checked);
-	deleteButton.disabled = !checked;
+	
+  if (deleteButton)
+  {
+    deleteButton.disabled = !writer || !checked;
+  }
 }
 
 function toggleSelection()
@@ -270,11 +273,24 @@ function onFilesChange()
 function init()
 {
   const uploadFolderButton = document.getElementById("uploadFolder");
-  const uploadFilesInput = document.getElementById("uploadFiles");
+  const uploadFilesButton = document.getElementById("uploadFiles");
+  const filesInput = document.getElementById("files");
 
-  if (uploadFolderButton && uploadFilesInput && !("webkitdirectory" in uploadFilesInput))
+  if (uploadFolderButton)
   {
-  uploadFolderButton.hidden = true;
+    if (filesInput && "webkitdirectory" in filesInput)
+    {
+      uploadFolderButton.disabled = !writer;
+    }
+    else
+    {
+      uploadFolderButton.hidden = true;
+    }
+  }
+
+  if (uploadFilesButton)
+  {
+    uploadFilesButton.disabled = !writer;
   }
 
   toggleSelection();
@@ -296,12 +312,9 @@ init();
 	</h1>
 	<div class="toolbar">
     <button id="downloadFile" type="button" {...{onclick: "download()"}}>Download</button>
-    {authInfo!.role !== "writer" && authInfo!.role !== "owner" ? null :
-    <>
-    <button id="uploadFile" type="button" {...{onclick: "upload()"}}>Upload</button>
-    <button id="uploadFolder" type="button" {...{onclick: "upload(true)"}}>Upload folder</button>
+    <button id="uploadFiles" type="button" {...{onclick: "upload()"}} disabled>Upload</button>
+    <button id="uploadFolder" type="button" {...{onclick: "upload(true)"}} disabled>Upload folder</button>
     <button id="delete" type="button" {...{onclick: "deleteSelection()"}} disabled>Delete</button>
-    </>}
 	</div>
 </header>
 

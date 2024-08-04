@@ -19,6 +19,31 @@ export function validpath(path: string|null|undefined)
     !new Minimatch(path).hasMagic());
 }
 
+export function matchrole(authInfo: AuthInfo|undefined|null, role: Role)
+{
+  const authRole = authInfo?.role;
+
+  switch(role)
+  {
+    case "reader":
+    {
+      return authRole === "reader" || authRole === "writer" || authRole === "owner";
+    }
+    case  "writer":
+    {
+      return authRole === "writer" || authRole === "owner";
+    }
+    case "owner":
+    {
+      return authRole === "owner";
+    }
+    default:
+    {
+      return true;      
+    }
+  }
+}
+
 export function unauthorized(_: Request, response: Response)
 {
   response.status(401).set("WWW-Authenticate", "Basic").send("Unauthorized");
@@ -181,31 +206,6 @@ Check:
   }
 
   next();
-}
-
-export function matchrole(authInfo: AuthInfo|undefined|null, role: Role)
-{
-  const authRole = authInfo?.role;
-
-  switch(role)
-  {
-    case "reader":
-    {
-      return authRole === "reader" || authRole === "writer" || authRole === "owner";
-    }
-    case  "writer":
-    {
-      return authRole === "writer" || authRole === "owner";
-    }
-    case "owner":
-    {
-      return authRole === "owner";
-    }
-    default:
-    {
-      return true;      
-    }
-  }
 }
 
 export function authorize(role: Role)

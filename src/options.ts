@@ -32,20 +32,14 @@ export const options =
   // Bucket is required.
   bucket: process.env.APP_BUCKET ?? error("APP_BUCKET"),
 
-  iamApiUrl: process.env.IAM_API_URL ?? 
-    (local ? "https://iam.cloud.ibm.com/v1/" :
-      region === "us-south" ? "https://private.us-south.iam.cloud.ibm.com" :
-      region === "us-east" ? "https://private.us-east.iam.cloud.ibm.com" :
-      region === "us-south" ? "https://private.eu-de.iam.cloud.ibm.com" :
-      "https://iam.cloud.ibm.com/v1/"),
-
+  iamApiUrl: process.env.IAM_API_URL ?? "https://iam.cloud.ibm.com/v1/",
   apiKey: process.env.APP_APIKEY ?? process.env.CLOUD_OBJECT_STORAGE_APIKEY,
   
   // Users Service ID is required.
   usersServiceId: process.env.APP_USERS_SERVICE_ID ?? error("APP_USERS_SERVICE_ID"),
+
   authCacheSize: toNumber(process.env.AUTH_CACHE_SIZE) ?? 1000,
   authCacheExpirationInMinutes: toNumber(process.env.AUTH_CATCH_TTL_MINUTES) ?? 10 * 60 * 1000,
-
   github: process.env.GITHUB_SOURCES ?? "https://github.com/nesterovsky-bros/cos-registry",
 
   api: [] as 

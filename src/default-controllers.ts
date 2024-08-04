@@ -192,7 +192,7 @@ async function post(request: Request, response: Response, next: NextFunction)
 					await deleteObjects(fullpaths);
 				}
 
-				await read(request, response);
+				read(request, response);
 	
 				return;
 			}
@@ -218,7 +218,7 @@ async function post(request: Request, response: Response, next: NextFunction)
 					}
 				}
 			
-				await read(request, response);
+				read(request, response);
 	
 				return;
 			}
