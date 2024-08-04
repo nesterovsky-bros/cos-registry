@@ -1,13 +1,13 @@
 # Registry application
 
-Registry is a web application with primitive UI to support virtual file system.  
-Supports HTTP GET, PUT, and DELETE, used by maven, to browse and manipulate the data.  
-Implements Nuget and NPM REST API.  
-Access to the application is authorized.
+- Registry is a web application with primitive UI to support virtual file system.  
+- Supports HTTP GET, PUT, and DELETE, used by maven, to browse and manipulate the data.  
+- Implements Nuget and NPM REST API.  
+- Access to the application is authorized.
 
-Registry stores data in IBM Cloud Object Storage instance accessed by dedicated Service ID not exposed to the end user.  
-Users are granted access rights by the owner who manages them in IAM API Keys dashboard of another dedicated Service ID.    
-Access rights are granted for read or write and are subject of directory filtering.
+- Registry stores data in IBM Cloud Object Storage instance accessed by dedicated Service ID not exposed to the end user.  
+- Users are granted access rights by the owner who manages them in IAM API Keys dashboard of another dedicated Service ID.    
+- Access rights are granted for read or write and are subject of directory filtering.
 
 # TODO: Explain following in details.
 
@@ -53,10 +53,10 @@ It should contain JSON in format:
 }
 ```
 
-If "role" is not specified then "reader" is assumed.
-If "include" is not specified then access is permitted to a whole tree; otherwise only to a subtree matched to some include glob.
-If "exlude" is not specified then access is not additionally restricted; otherwise it's restricted to subtrees matched to any exclude glob.
-Other properties are permitted, e.g. `"accesskey": "secreet"` to memorize API Key secret.
+- If "role" is not specified then "reader" is assumed.
+- If "include" is not specified then access is permitted to a whole tree; otherwise only to a subtree matched to some include glob.
+- If "exlude" is not specified then access is not additionally restricted; otherwise it's restricted to subtrees matched to any exclude glob.
+- Other properties are permitted, e.g. `"accesskey": "secreet"` to memorize API Key secret.
 
 # Developer
 
