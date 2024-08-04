@@ -48,8 +48,8 @@ It should contain JSON in format:
 ```JSON
 {
   "role": "reader or writer or owner", 
-  "include": string[],
-  "exclude": string[]
+  "include": ["glob"],
+  "exclude": ["glob"]
 }
 ```
 
