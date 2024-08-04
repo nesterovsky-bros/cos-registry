@@ -51,7 +51,7 @@ Given a url and an access token users configure https endpoints in maven, nuget,
 - If after creation you're lost then go to Resource list and  
   <img src="https://github.com/user-attachments/assets/57220b8b-3ed4-4228-ac45-8bf64a41aaf7" width="200">
 
-- select storage
+- select storage  
   <img src="https://github.com/user-attachments/assets/b4a16da6-22c2-4029-b022-daeaf19a9633" width="200">
 
 3. Create new [Service ID](https://cloud.ibm.com/iam/serviceids) (referred later `APP_USER`) that should be used to access Cloud Object Storage and IAM Identity service to to validate users.
