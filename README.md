@@ -5,6 +5,7 @@
 - Implements Nuget and NPM REST API.  
 - Access to the application is authorized.
 
+
 - Registry stores data in IBM Cloud Object Storage instance accessed by dedicated Service ID not exposed to the end user.  
 - Users are granted access rights by the owner who manages them in IAM API Keys dashboard of another dedicated Service ID.    
 - Access rights are granted for read or write and are subject of directory filtering.
