@@ -20,7 +20,7 @@ Given a url and an access token users configure https endpoints in maven, nuget,
 
 ## Steps to create and manage registry application.
 
-1. Create or select existing IBM [Cloud Object Storage](https://cloud.ibm.com/objectstorage) instance (referred later `CLOUD_OBJECT_STORAGE`).
+1. Create or select existing IBM [Cloud Object Storage](https://cloud.ibm.com/objectstorage) instance (referred later as `CLOUD_OBJECT_STORAGE`).
 
 - Cloud Object Storage  
   <img src="https://github.com/user-attachments/assets/9bbff634-1a4d-429a-a067-6abef0974d00" alt="Cloud Object Storage" width="400">
@@ -31,7 +31,7 @@ Given a url and an access token users configure https endpoints in maven, nuget,
 - Storage Configuration   
   <img src="https://github.com/user-attachments/assets/3eeb0812-4bd4-45bf-8aea-35b53e79526b" alt="Storage Configuration" width="400">
 
-2. Create a new bucket in "Cloud Object Storage"/"Instances"/`CLOUD_OBJECT_STORAGE` (referred later APP_BUCKET).
+2. Create a new bucket in "Cloud Object Storage"/"Instances"/`CLOUD_OBJECT_STORAGE` (referred later as APP_BUCKET).
 
 - Create bucket  
   <img src="https://github.com/user-attachments/assets/c77b3e4d-22ce-4079-9dee-52986b62e3aa" width="400">
@@ -54,15 +54,15 @@ Given a url and an access token users configure https endpoints in maven, nuget,
 - select storage  
   <img src="https://github.com/user-attachments/assets/b4a16da6-22c2-4029-b022-daeaf19a9633" width="200">
 
-3. Create new [Service ID](https://cloud.ibm.com/iam/serviceids) (referred later `APP_USER`) that should be used to access Cloud Object Storage and IAM Identity service to to validate users.
+3. Create new [Service ID](https://cloud.ibm.com/iam/serviceids) (referred later as `APP_USER`) that should be used to access Cloud Object Storage and IAM Identity service to to validate users.
 Take note of `ID` of `APP_USER` clicking "Details".
 4. Click API Keys of `APP_USER` Service ID, and create Access Key. Note its name and access key.
 5. Assign write access for `APP_USER` to `CLOUD_OBJECT_STORAGE`. Click "Assign Access" in Access tab of Service ID `APP_USER`. Follow "Assign access" wizard and select `CLOUD_OBJECT_STORAGE` service, All Resources, and "Writer" role. Verify, Add, and then assign the access.
 6. Assign IAM Identity keys inspection to then `API_USER`. Again click "Assign Access" in Access tab of Service ID `APP_USER`. Follow "Assign access" wizard but select now `IAM Identity Service`,
 All Resources, and "Operator" role or a custom role containing action `iam-identity.apikey.get`.
 Verify, Add, and then assign the access.
-7. Create another [Service ID](https://cloud.ibm.com/iam/serviceids) (referred later `USERS_CONTAINER`) that will be used to create access keys with grants to access application.
-8. Create a [Code Engine project](https://cloud.ibm.com/codeengine/projects) (referred later `MY_REGISTRY`). During project creation make sure you selected correct project location and a resource group. In general it should be the same as for `CLOUD_OBJECT_STORAGE`.
+7. Create another [Service ID](https://cloud.ibm.com/iam/serviceids) (referred later as `USERS_CONTAINER`) that will be used to create access keys with grants to access application.
+8. Create a [Code Engine project](https://cloud.ibm.com/codeengine/projects) (referred later as `MY_REGISTRY`). During project creation make sure you selected correct project location and a resource group. In general it should be the same as for `CLOUD_OBJECT_STORAGE`.
 9. Go to the "Project settings"/"Integrations" to configure service bindings and connect it to a resource group; and then to configure "Container Ragistry" - this is place where application images are stored.
 10. Inside `MY_REGISTRY` project create new "service binding" to Cloud Object Storage using Access Key for `APP_USER`. Make sure service binding prefix is an empty value.
 During service binding select `APP_USER` as service credential, and verify that the role is `Writer`.
