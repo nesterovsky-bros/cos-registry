@@ -190,7 +190,7 @@ Take note of `ID` of `APP_USER` clicking "Details".
 - Make sure service binding prefix is an empty value. During service binding select `APP_USER` as service credential, and verify that the role is `Writer`.  
   <img src="docs/images/code_engine_service_binding_properties.png" width="400"/>
   
-12. Create an application within project 
+11. Create an application within project 
 
 - Select "Applications" and click "Create"  
 <img src="docs/images/code_engine_create_application.png" width="400">
@@ -215,11 +215,24 @@ In environment variable section add following variables:
   - `APP_USER_SERVICE_ID` - with the `USERS_CONTAINER`.  
 <img src="docs/images/code_engine_application_environment.png" width="400">
 
-Create the instance
-<img srce="docs/images/code_engine_application_create_instance.png" width="400">
+Create the instance  
+<img src="docs/images/code_engine_application_create_instance.png" width="400">
 
 12. Build and deploy application image.
-  After this step application is up and running.
+
+- In "Image builds" of application you can see existing build runs  
+  <img src="docs/images/code_engine_application_image_build.png" width="400">
+
+- or create a new build  
+  <img src="docs/images/code_engine_application_create_image.png" width="400">
+
+- go into the application (notice "**Open URL**" link), and  
+  <img src="docs/images/code_engine_application_page.png" width="400">
+
+- then into configuration and click "Redeploy"  
+  <img src="docs/images/code_engine_application_redeploy.png" width="400">
+  
+  After this step application is up and running, so you can open application URL.
 13. Last step is to create API Keys within [Service ID](https://cloud.ibm.com/iam/serviceids) `USERS_CONTAINER` to grant access to users. 
 Give API key secret should be given to the users.
 
