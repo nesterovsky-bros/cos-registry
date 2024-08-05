@@ -266,7 +266,3 @@ Create the instance
 
 Last step should be repeated for all users.
 That's all!
-
-# Developer
-
-There are more environment variable to play with.
