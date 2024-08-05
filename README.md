@@ -233,11 +233,21 @@ Create the instance
   <img src="docs/images/code_engine_application_redeploy.png" width="400">
   
   After this step application is up and running, so you can open application URL.
-13. Last step is to create API Keys within [Service ID](https://cloud.ibm.com/iam/serviceids) `USERS_CONTAINER` to grant access to users. 
-Give API key secret should be given to the users.
+13. Final, administrative, step is to manage users.
 
-While creating API Key for a new user use description to configure access rights.
-It should contain JSON in format:
+- Go to Access (IAM)  
+  <img src="docs/images/iam.png" width="400">
+
+- into API Keys of [Service ID](https://cloud.ibm.com/iam/serviceids) `USERS_CONTAINER`  
+  <img src="docs/images/users_container_api_keys.png" width="400">
+  
+- Create API Key for a user.  
+  <img src="docs/images/create_user_key.png" width="400">
+
+- Give API key secret should be given to the users.
+<img src="docs/images/user_key_secret.png" width="400">
+
+- Use Description to configure access rights. It should contain JSON in format:
 
 ```JSON
 {
@@ -250,7 +260,12 @@ It should contain JSON in format:
 - If "role" is not specified then "reader" is assumed.
 - If "include" is not specified then access is permitted to a whole tree; otherwise only to a subtree matched to some include glob.
 - If "exlude" is not specified then access is not additionally restricted; otherwise it's restricted to subtrees matched to any exclude glob.
-- Other properties are permitted, e.g. `"accesskey": "secreet"` to memorize API Key secret.
+- Other properties are permitted, e.g. `"accesskey": "secret"` to memorize API Key secret.  
+
+<img src="docs/images/users_container_key_settings.png" width="400">
+
+Last step should be repeated for all users.
+That's all!
 
 # Developer
 
