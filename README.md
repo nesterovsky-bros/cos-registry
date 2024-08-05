@@ -10,11 +10,74 @@
 - Users are granted access rights by the owner who manages them in IAM API Keys dashboard of another dedicated Service ID.    
 - Access rights are granted for read or write and are subject of directory filtering.
 
-# TODO: Explain following in details.
-
 # User
 
-Given a url and an access token users configure https endpoints in maven, nuget, npm or in other tool.
+Users may configure maven, nuget, npm or other tools to use application as a private registry.
+
+## Steps to configure maven.
+
+### 1. Configure `settings.xml`
+Define repositories and credentials in the `settings.xml` file, which is typically located in the `${MAVEN_HOME}/conf` directory or the `${USER_HOME}/.m2` directory.
+
+#### Adding Repositories
+Add repositories in the `profiles` section of the `settings.xml` file. Here’s an example:
+
+```xml
+<settings>
+  <servers>
+    <server>
+      <id>my-private-repo</id>
+      <username>your-username</username>
+      <password>your-password</password>
+    </server>
+  </servers>
+
+  <profiles>
+    <profile>
+      <id>private-repo-profile</id>
+      <repositories>
+        <repository>
+          <id>my-private-repo</id>
+          <url>https://your-private-repo-url/repository/</url>
+        </repository>
+      </repositories>
+    </profile>
+  </profiles>
+
+  <activeProfiles>
+    <activeProfile>private-repo-profile</activeProfile>
+  </activeProfiles>
+</settings>
+```
+
+Replace `my-private-repo`, `your-username`, `your-password`, and `https://your-private-repo-url/repository/` with your repository ID, credentials, and URL.
+
+### 2. Deploying Artifacts
+To deploy artifacts use the `deploy:deploy-file` goal to specify the repository URL and credentials directly in the command line or in a profile.
+
+Here’s an example of how to deploy an artifact using the `deploy:deploy-file` goal:
+
+```sh
+mvn deploy:deploy-file -DgroupId=com.example -DartifactId=my-artifact -Dversion=1.0.0
+  -Dpackaging=jar -Dfile=path-to-your-artifact.jar
+  -DrepositoryId=my-private-repo
+  -Durl=https://your-private-repo-url/repository/maven-releases/
+```
+
+### 3. Using the Private Repository in Other Projects
+To use the private repository in other projects ensure that the `settings.xml` file on the machines where these projects are built includes the profile with the repository configuration.
+
+## Steps to configure Nuget
+
+### 1. Add the Private NuGet Source
+Use the `dotnet nuget add source` command to add your private NuGet source. Replace `source-name`, `https://your-private-repo-url/nuget/v3/index.json`, `your-username`, and `your-password` with your repository name, URL, and credentials.
+
+```sh
+dotnet nuget add source --name source-name
+  --username your-username
+  --password your-password
+  --store-password-in-clear-text https://your-private-repo-url/nuget/v3/index.json
+```
 
 # Owner
 
