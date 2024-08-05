@@ -29,7 +29,7 @@ ${render(tableHead())}
 
   if (path === "/")
   {
-    response.write(render(row({ name: "README", selecable: false, href: `${options.github}#readme` })));
+    response.write(render(row({ name: "README", selecable: false })));
     response.write(render(row({ name: "api/", selecable: false })));
   }
 

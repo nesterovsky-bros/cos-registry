@@ -12,6 +12,7 @@ const upload = multer({ dest: 'uploads/', preservePath: true })
 
 export function defaultControllers(app: Express)
 {
+	app.get("/README", readme);
 	app.get("/favicon.ico", authenticate, favicon);
 	app.get("*", authorize("reader"), read);
 	app.put("*", authorize("writer"), put);	
@@ -24,6 +25,11 @@ export function defaultControllers(app: Express)
 		url: options.url,
 		description: "Http GET, PUT, DELETE and primitive UI. Also used by maven."
 	});
+}
+
+function readme(_: Request, response: Response) 
+{
+	response.redirect(`${options.github}#readme`);
 }
 
 function favicon(request: Request, response: Response) 

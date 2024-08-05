@@ -12,11 +12,11 @@ const memoryCache = await caching('memory',
 
 export function validpath(path: string|null|undefined)
 {
-  return !!(path && 
+  return !!path && 
     path !== "api" && 
     path !== "README" && 
-    !path.startsWith("api/") &&
-    !new Minimatch(path).hasMagic());
+    !path.startsWith("api/") && 
+    !new Minimatch(path).hasMagic();
 }
 
 export function matchrole(authInfo: AuthInfo|undefined|null, role: Role)
