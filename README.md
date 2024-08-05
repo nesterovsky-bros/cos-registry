@@ -102,6 +102,15 @@ Take note of `ID` of `APP_USER` clicking "Details".
   <img src="docs/images/user_container.png" width="400">
   
 8. Create a [Code Engine project](https://cloud.ibm.com/codeengine/projects) (referred later as `MY_REGISTRY`). During project creation make sure you selected correct project location and a resource group. In general it should be the same as for `CLOUD_OBJECT_STORAGE`.
+
+- Cloud Engine Projects  
+  <img src="docs/images/cloud_engine_projects.png" width="400">
+
+- Create project  
+  <img src="docs/images/cloud_engine_create_project.png" width="300">
+
+- Click Create and then follow project link to go to project page
+  <img src="docs/images/code_engine_registry_project.png" width="400">
 9. Go to the "Project settings"/"Integrations" to configure service bindings and connect it to a resource group; and then to configure "Container Ragistry" - this is place where application images are stored.
 10. Inside `MY_REGISTRY` project create new "service binding" to Cloud Object Storage using Access Key for `APP_USER`. Make sure service binding prefix is an empty value.
 During service binding select `APP_USER` as service credential, and verify that the role is `Writer`.
