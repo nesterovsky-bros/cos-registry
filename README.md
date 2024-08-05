@@ -101,11 +101,11 @@ Take note of `ID` of `APP_USER` clicking "Details".
 - Create Service ID  
   <img src="docs/images/user_container.png" width="400">
   
-9. Create a [Code Engine project](https://cloud.ibm.com/codeengine/projects) (referred later as `MY_REGISTRY`). During project creation make sure you selected correct project location and a resource group. In general it should be the same as for `CLOUD_OBJECT_STORAGE`.
-10. Go to the "Project settings"/"Integrations" to configure service bindings and connect it to a resource group; and then to configure "Container Ragistry" - this is place where application images are stored.
-11. Inside `MY_REGISTRY` project create new "service binding" to Cloud Object Storage using Access Key for `APP_USER`. Make sure service binding prefix is an empty value.
+8. Create a [Code Engine project](https://cloud.ibm.com/codeengine/projects) (referred later as `MY_REGISTRY`). During project creation make sure you selected correct project location and a resource group. In general it should be the same as for `CLOUD_OBJECT_STORAGE`.
+9. Go to the "Project settings"/"Integrations" to configure service bindings and connect it to a resource group; and then to configure "Container Ragistry" - this is place where application images are stored.
+10. Inside `MY_REGISTRY` project create new "service binding" to Cloud Object Storage using Access Key for `APP_USER`. Make sure service binding prefix is an empty value.
 During service binding select `APP_USER` as service credential, and verify that the role is `Writer`.
-12. Create an application within project - select "Applications" and click "Create". 
+11. Create an application within project - select "Applications" and click "Create". 
 Configure image to build from source, and click "Specify build details", where you put repository details, select "Cloud Native Buildpack" build strategy, select a registry server (e.g. private.icr.io), select or create registry secret (e.g. "Code Engine managed secret"), select namespace and define image name. In Resources & scaling section set "Scale-down delay" to non zero value (e.g. 60 seconds). In environment variable section add following variables:
   - `APP_BUCKET` - with the bucket name.
   - `APP_USER_SERVICE_ID` - with the `USERS_CONTAINER`.
