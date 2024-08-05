@@ -88,9 +88,14 @@ Take note of `ID` of `APP_USER` clicking "Details".
 - Verify, Add, and then assign the access.  
   <img src="docs/images/cas_policy_assign.png" width="400">
   
-6. Assign IAM Identity keys inspection to then `API_USER`. Again click "Assign Access" in Access tab of Service ID `APP_USER`. Follow "Assign access" wizard but select now `IAM Identity Service`,
-All Resources, and "Operator" role or a custom role containing action `iam-identity.apikey.get`.
-Verify, Add, and then assign the access.
+6. Assign IAM Identity keys inspection to then `API_USER`.
+
+- Click "Assign Access" in Access tab of Service ID `APP_USER`  
+  <img src="docs/images/serviceid_access_policies.png" width="400">
+  
+- Follow "Assign access" wizard and select `IAM Identity Service` service, All Resources, and "Operator" role or a custom role containing action `iam-identity.apikey.get`. Verify, Add, and then assign the access.  
+  <img src="docs/images/create_iam_identity_access.png" width="400">
+
 7. Create another [Service ID](https://cloud.ibm.com/iam/serviceids) (referred later as `USERS_CONTAINER`) that will be used to create access keys with grants to access application.
 8. Create a [Code Engine project](https://cloud.ibm.com/codeengine/projects) (referred later as `MY_REGISTRY`). During project creation make sure you selected correct project location and a resource group. In general it should be the same as for `CLOUD_OBJECT_STORAGE`.
 9. Go to the "Project settings"/"Integrations" to configure service bindings and connect it to a resource group; and then to configure "Container Ragistry" - this is place where application images are stored.
