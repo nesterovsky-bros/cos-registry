@@ -187,13 +187,37 @@ Take note of `ID` of `APP_USER` clicking "Details".
 - Select service  
   <img src="docs/images/code_engine_project_select_service_binding.png" width="400">
   
-- Make sure service binding prefix is an empty value. During service binding select `APP_USER` as service credential, and verify that the role is `Writer`.
+- Make sure service binding prefix is an empty value. During service binding select `APP_USER` as service credential, and verify that the role is `Writer`.  
   <img src="docs/images/code_engine_service_binding_properties.png" width="400"/>
   
-12. Create an application within project - select "Applications" and click "Create". 
-Configure image to build from source, and click "Specify build details", where you put repository details, select "Cloud Native Buildpack" build strategy, select a registry server (e.g. private.icr.io), select or create registry secret (e.g. "Code Engine managed secret"), select namespace and define image name. In Resources & scaling section set "Scale-down delay" to non zero value (e.g. 60 seconds). In environment variable section add following variables:
-  - `APP_BUCKET` - with the bucket name.
-  - `APP_USER_SERVICE_ID` - with the `USERS_CONTAINER`.
+12. Create an application within project 
+
+- Select "Applications" and click "Create"  
+<img src="docs/images/code_engine_create_application.png" width="400">
+
+- Configure image to build from source, and click "Specify build details"  
+<img src="docs/images/code_engine_create_application_properties.png" width="400">
+
+- where you put repository details  
+<img src="docs/images/code_engine_application_source.png" width="400">
+
+- select "Cloud Native Buildpack" build strategy  
+<img src="docs/images/code_engine_application_build.png" width="400">
+
+- Select a registry server (e.g. private.icr.io), select or create registry secret (e.g. "Code Engine managed secret"), select namespace and define image name  
+<img src="docs/images/code_engine_application_build_output.png" width="400">
+
+- In Resources & scaling section set "Scale-down delay" to non zero value (e.g. 120 seconds).  
+<img src="docs/images/code_engine_application_scaling_delay.png" width="400">
+
+In environment variable section add following variables:   
+  - `APP_BUCKET` - with the bucket name.  
+  - `APP_USER_SERVICE_ID` - with the `USERS_CONTAINER`.  
+<img src="docs/images/code_engine_application_environment.png" width="400">
+
+Create the instance
+<img srce="docs/images/code_engine_application_create_instance.png" width="400">
+
 12. Build and deploy application image.
   After this step application is up and running.
 13. Last step is to create API Keys within [Service ID](https://cloud.ibm.com/iam/serviceids) `USERS_CONTAINER` to grant access to users. 
