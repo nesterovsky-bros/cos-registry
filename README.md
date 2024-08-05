@@ -23,36 +23,36 @@ Given a url and an access token users configure https endpoints in maven, nuget,
 1. Create or select existing IBM [Cloud Object Storage](https://cloud.ibm.com/objectstorage) instance (referred later as `CLOUD_OBJECT_STORAGE`).
 
 - Cloud Object Storage  
-  <img src="https://github.com/user-attachments/assets/9bbff634-1a4d-429a-a067-6abef0974d00" alt="Cloud Object Storage" width="400">
+  <img src="docs/images/cos_create.png" alt="Cloud Object Storage" width="400">
 
 - Create Instance  
-  <img src="https://github.com/user-attachments/assets/e7354798-409e-4cc4-acf2-613e01280e94" alt="Create Instance" width="400">  
+  <img src="docs/images/cos_create_instance.png" alt="Create Instance" width="400">  
 
 - Storage Configuration   
-  <img src="https://github.com/user-attachments/assets/3eeb0812-4bd4-45bf-8aea-35b53e79526b" alt="Storage Configuration" width="400">
+  <img src="docs/images/cos_instance_configuration.png" alt="Storage Configuration" width="400">
 
 2. Create a new bucket in "Cloud Object Storage"/"Instances"/`CLOUD_OBJECT_STORAGE` (referred later as APP_BUCKET).
 
 - Create bucket  
-  <img src="https://github.com/user-attachments/assets/c77b3e4d-22ce-4079-9dee-52986b62e3aa" width="400">
+  <img src="docs/images/create-bucket.png" width="400">
 
 - Use simple bucket configuration  
-  <img src="https://github.com/user-attachments/assets/669508c7-462f-4167-8e3d-19a8188de6a4" width="200">
+  <img src="docs/images/simple_bucket_configuration.png" width="200">
 
 - Select bucket parameters  
-  <img src="https://github.com/user-attachments/assets/c31b815a-68d6-4221-aefc-5c8a8c4a8a00" width="400">
+  <img src="docs/images/bucket_parameters.png" width="400">
 
 - Mutable without versioning  
   <img src="https://github.com/user-attachments/assets/563cbd34-b2dd-42f1-8d58-c3a1627659e7" width="400">
 
 - Don't expose it as a static site  
-  <img src="https://github.com/user-attachments/assets/57c5c11c-5d26-419f-a2e5-a0a4d3ad9387" width="400">
+  <img src="docs/images/cos_no_static_site.png" width="400">
 
 - If after creation you're lost then go to Resource list and  
-  <img src="https://github.com/user-attachments/assets/57220b8b-3ed4-4228-ac45-8bf64a41aaf7" width="200">
+  <img src="docs/images/resource_list.png" width="200">
 
 - select storage  
-  <img src="https://github.com/user-attachments/assets/b4a16da6-22c2-4029-b022-daeaf19a9633" width="200">
+  <img src="docs/images/resource_list_storage.png" width="200">
 
 3. Create new [Service ID](https://cloud.ibm.com/iam/serviceids) (referred later as `APP_USER`) that should be used to access Cloud Object Storage and IAM Identity service to to validate users.
 Take note of `ID` of `APP_USER` clicking "Details".
