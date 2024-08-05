@@ -83,6 +83,11 @@ dotnet nuget add source --name source-name
 
 ## Steps to create and manage registry application.
 
+### TL;DR
+Following are lengthy steps in IBM Cloud site to configure new registry application. If you are not a fan of boring instructions, then look at the [bash script](cloud-setup.sh) that will do all the work for you.
+
+### Long way
+
 1. Create or select existing IBM [Cloud Object Storage](https://cloud.ibm.com/objectstorage) instance (referred later as `CLOUD_OBJECT_STORAGE`).
 
 - Cloud Object Storage  
