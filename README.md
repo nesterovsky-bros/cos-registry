@@ -63,7 +63,7 @@ Take note of `ID` of `APP_USER` clicking "Details".
 - Create Service ID  
   <img src="docs/images/create_serviceid.png" width="400">
 
-5. Click API Keys of `APP_USER` Service ID, and create Access Key. Note its name and access key.
+4. Click API Keys of `APP_USER` Service ID, and create Access Key. Note its name and access key.
 
 - Service ID API Keys  
   <img src="docs/images/serviceid_api_keys.png" width="400">
@@ -74,7 +74,7 @@ Take note of `ID` of `APP_USER` clicking "Details".
 - API Key created  
   <img src="docs/images/api_key_created.png" width="400">
    
-7. Assign write access for `APP_USER` to `CLOUD_OBJECT_STORAGE`.
+5. Assign write access for `APP_USER` to `CLOUD_OBJECT_STORAGE`.
 
 - Click "Assign Access" in Access tab of Service ID `APP_USER`  
   <img src="docs/images/serviceid_access_policies.png" width="400">
@@ -88,21 +88,21 @@ Take note of `ID` of `APP_USER` clicking "Details".
 - Verify, Add, and then assign the access.  
   <img src="docs/images/cas_policy_assign.png" width="400">
   
-9. Assign IAM Identity keys inspection to then `API_USER`. Again click "Assign Access" in Access tab of Service ID `APP_USER`. Follow "Assign access" wizard but select now `IAM Identity Service`,
+6. Assign IAM Identity keys inspection to then `API_USER`. Again click "Assign Access" in Access tab of Service ID `APP_USER`. Follow "Assign access" wizard but select now `IAM Identity Service`,
 All Resources, and "Operator" role or a custom role containing action `iam-identity.apikey.get`.
 Verify, Add, and then assign the access.
-10. Create another [Service ID](https://cloud.ibm.com/iam/serviceids) (referred later as `USERS_CONTAINER`) that will be used to create access keys with grants to access application.
-11. Create a [Code Engine project](https://cloud.ibm.com/codeengine/projects) (referred later as `MY_REGISTRY`). During project creation make sure you selected correct project location and a resource group. In general it should be the same as for `CLOUD_OBJECT_STORAGE`.
-12. Go to the "Project settings"/"Integrations" to configure service bindings and connect it to a resource group; and then to configure "Container Ragistry" - this is place where application images are stored.
-13. Inside `MY_REGISTRY` project create new "service binding" to Cloud Object Storage using Access Key for `APP_USER`. Make sure service binding prefix is an empty value.
+7. Create another [Service ID](https://cloud.ibm.com/iam/serviceids) (referred later as `USERS_CONTAINER`) that will be used to create access keys with grants to access application.
+8. Create a [Code Engine project](https://cloud.ibm.com/codeengine/projects) (referred later as `MY_REGISTRY`). During project creation make sure you selected correct project location and a resource group. In general it should be the same as for `CLOUD_OBJECT_STORAGE`.
+9. Go to the "Project settings"/"Integrations" to configure service bindings and connect it to a resource group; and then to configure "Container Ragistry" - this is place where application images are stored.
+10. Inside `MY_REGISTRY` project create new "service binding" to Cloud Object Storage using Access Key for `APP_USER`. Make sure service binding prefix is an empty value.
 During service binding select `APP_USER` as service credential, and verify that the role is `Writer`.
-14. Create an application within project - select "Applications" and click "Create". 
+11. Create an application within project - select "Applications" and click "Create". 
 Configure image to build from source, and click "Specify build details", where you put repository details, select "Cloud Native Buildpack" build strategy, select a registry server (e.g. private.icr.io), select or create registry secret (e.g. "Code Engine managed secret"), select namespace and define image name. In Resources & scaling section set "Scale-down delay" to non zero value (e.g. 60 seconds). In environment variable section add following variables:
   - `APP_BUCKET` - with the bucket name.
   - `APP_USER_SERVICE_ID` - with the `USERS_CONTAINER`.
 12. Build and deploy application image.
   After this step application is up and running.
-14. Last step is to create API Keys within [Service ID](https://cloud.ibm.com/iam/serviceids) `USERS_CONTAINER` to grant access to users. 
+13. Last step is to create API Keys within [Service ID](https://cloud.ibm.com/iam/serviceids) `USERS_CONTAINER` to grant access to users. 
 Give API key secret should be given to the users.
 
 While creating API Key for a new user use description to configure access rights.
