@@ -56,17 +56,24 @@ Given a url and an access token users configure https endpoints in maven, nuget,
 
 3. Create new [Service ID](https://cloud.ibm.com/iam/serviceids) (referred later as `APP_USER`) that should be used to access Cloud Object Storage and IAM Identity service to to validate users.
 Take note of `ID` of `APP_USER` clicking "Details".
-4. Click API Keys of `APP_USER` Service ID, and create Access Key. Note its name and access key.
-5. Assign write access for `APP_USER` to `CLOUD_OBJECT_STORAGE`. Click "Assign Access" in Access tab of Service ID `APP_USER`. Follow "Assign access" wizard and select `CLOUD_OBJECT_STORAGE` service, All Resources, and "Writer" role. Verify, Add, and then assign the access.
-6. Assign IAM Identity keys inspection to then `API_USER`. Again click "Assign Access" in Access tab of Service ID `APP_USER`. Follow "Assign access" wizard but select now `IAM Identity Service`,
+
+- Service ID  
+  <img src="docs/images/serviceids.png" width="400">
+
+- Create Service ID  
+  <img src="docs/images/create_serviceid.png" width="400">
+
+5. Click API Keys of `APP_USER` Service ID, and create Access Key. Note its name and access key.
+6. Assign write access for `APP_USER` to `CLOUD_OBJECT_STORAGE`. Click "Assign Access" in Access tab of Service ID `APP_USER`. Follow "Assign access" wizard and select `CLOUD_OBJECT_STORAGE` service, All Resources, and "Writer" role. Verify, Add, and then assign the access.
+7. Assign IAM Identity keys inspection to then `API_USER`. Again click "Assign Access" in Access tab of Service ID `APP_USER`. Follow "Assign access" wizard but select now `IAM Identity Service`,
 All Resources, and "Operator" role or a custom role containing action `iam-identity.apikey.get`.
 Verify, Add, and then assign the access.
-7. Create another [Service ID](https://cloud.ibm.com/iam/serviceids) (referred later as `USERS_CONTAINER`) that will be used to create access keys with grants to access application.
-8. Create a [Code Engine project](https://cloud.ibm.com/codeengine/projects) (referred later as `MY_REGISTRY`). During project creation make sure you selected correct project location and a resource group. In general it should be the same as for `CLOUD_OBJECT_STORAGE`.
-9. Go to the "Project settings"/"Integrations" to configure service bindings and connect it to a resource group; and then to configure "Container Ragistry" - this is place where application images are stored.
-10. Inside `MY_REGISTRY` project create new "service binding" to Cloud Object Storage using Access Key for `APP_USER`. Make sure service binding prefix is an empty value.
+8. Create another [Service ID](https://cloud.ibm.com/iam/serviceids) (referred later as `USERS_CONTAINER`) that will be used to create access keys with grants to access application.
+9. Create a [Code Engine project](https://cloud.ibm.com/codeengine/projects) (referred later as `MY_REGISTRY`). During project creation make sure you selected correct project location and a resource group. In general it should be the same as for `CLOUD_OBJECT_STORAGE`.
+10. Go to the "Project settings"/"Integrations" to configure service bindings and connect it to a resource group; and then to configure "Container Ragistry" - this is place where application images are stored.
+11. Inside `MY_REGISTRY` project create new "service binding" to Cloud Object Storage using Access Key for `APP_USER`. Make sure service binding prefix is an empty value.
 During service binding select `APP_USER` as service credential, and verify that the role is `Writer`.
-11. Create an application within project - select "Applications" and click "Create". 
+12. Create an application within project - select "Applications" and click "Create". 
 Configure image to build from source, and click "Specify build details", where you put repository details, select "Cloud Native Buildpack" build strategy, select a registry server (e.g. private.icr.io), select or create registry secret (e.g. "Code Engine managed secret"), select namespace and define image name. In Resources & scaling section set "Scale-down delay" to non zero value (e.g. 60 seconds). In environment variable section add following variables:
   - `APP_BUCKET` - with the bucket name.
   - `APP_USER_SERVICE_ID` - with the `USERS_CONTAINER`.
