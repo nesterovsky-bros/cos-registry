@@ -33,15 +33,15 @@ ${render(tableHead())}
     response.write(render(row({ name: "api/", selecable: false })));
   }
 
-	for await(let item of listObjects(path.substring(1), authInfo))
-	{
+  for await(let item of listObjects(path.substring(1), authInfo))
+  {
     if (item.name)
     {
       response.write(render(row(item)));
     }
-	}
+  }
 
-	response.write(
+  response.write(
 `</tbody>
 </table>
 </form>
@@ -50,15 +50,15 @@ ${render(script())}
 <div class="copyright">©2024 A&V. <a href="${options.github}?tab=MIT-1-ov-file#readme">MIT License</a></div>
 </body></html>`);
 
-	response.end();
+  response.end();
 
   function head()
   {
     const style = `
 body 
 {
-	font-family: sans-serif;
-	font-size: 14px;
+  font-family: sans-serif;
+  font-size: 14px;
 }
 
 #header
@@ -81,34 +81,34 @@ body
 
 #index 
 {
-	border-collapse: separate;
-	border-spacing: 0;
-	margin: 0 0 20px; 
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 0 0 20px; 
 }
 
 #index th 
 {
-	vertical-align: bottom;
-	padding: 10px 5px 5px 5px;
-	font-weight: 400;
-	color: #a0a0a0;
-	text-align: center; 
+  vertical-align: bottom;
+  padding: 10px 5px 5px 5px;
+  font-weight: 400;
+  color: #a0a0a0;
+  text-align: center; 
 }
 
 #index td { padding: 3px 10px; }
 
 #index th, #index td 
 {
-	border-right: 1px #ddd solid;
-	border-bottom: 1px #ddd solid;
-	border-left: 1px transparent solid;
-	border-top: 1px transparent solid;
-	box-sizing: border-box; 
+  border-right: 1px #ddd solid;
+  border-bottom: 1px #ddd solid;
+  border-left: 1px transparent solid;
+  border-top: 1px transparent solid;
+  box-sizing: border-box; 
 }
 
 #index th:last-child, #index td:last-child 
 {
-	border-right: 1px transparent solid; 
+  border-right: 1px transparent solid; 
 }
 
 #index td.length, td.modified { text-align:right; }
@@ -139,13 +139,13 @@ const writer = ${matchrole(authInfo, "writer")};
 
 function toggleSelections()
 {
-	const selections = document.querySelector("#index .selections");
-	const selectionSelector = document.querySelectorAll("#index .selection");
-	const deleteButton = document.querySelector("#delete");
-	const checked = selections.checked;
+  const selections = document.querySelector("#index .selections");
+  const selectionSelector = document.querySelectorAll("#index .selection");
+  const deleteButton = document.querySelector("#delete");
+  const checked = selections.checked;
 
-	selectionSelector.forEach(element => element.checked = checked);
-	
+  selectionSelector.forEach(element => element.checked = checked);
+  
   if (deleteButton)
   {
     deleteButton.disabled = !writer || !checked;
@@ -154,28 +154,28 @@ function toggleSelections()
 
 function toggleSelection()
 {
-	const selections = document.querySelector("#index .selections");
-	const selectionSelector = document.querySelectorAll("#index .selection");
-	const deleteButton = document.querySelector("#delete");
-	const count = selectionSelector.length;
-	let selected = 0;
+  const selections = document.querySelector("#index .selections");
+  const selectionSelector = document.querySelectorAll("#index .selection");
+  const deleteButton = document.querySelector("#delete");
+  const count = selectionSelector.length;
+  let selected = 0;
 
-	selectionSelector.forEach(element => element.checked && ++selected);
+  selectionSelector.forEach(element => element.checked && ++selected);
 
-	selections.checked = count === selected;
-	selections.indeterminate = selected && count !== selected;
-	deleteButton.disabled = selected === 0;
+  selections.checked = count === selected;
+  selections.indeterminate = selected && count !== selected;
+  deleteButton.disabled = selected === 0;
 }
 
 function getSelection()
 {
-	const selections = document.querySelectorAll("#index tr:has(.selection:checked) .name a");
+  const selections = document.querySelectorAll("#index tr:has(.selection:checked) .name a");
 
-	const paths = [];
+  const paths = [];
 
-	selections.forEach(element => paths.push(element.textContent));
+  selections.forEach(element => paths.push(element.textContent));
 
-	return paths;
+  return paths;
 }
 
 function deleteSelection()
@@ -189,10 +189,10 @@ function deleteSelection()
     return;
   }
 
-	if (!getSelection().length || !confirm("Please confirm deletion of files or folders."))
-	{
-		return;
-	}
+  if (!getSelection().length || !confirm("Please confirm deletion of files or folders."))
+  {
+    return;
+  }
 
   if (files)
   {
@@ -306,16 +306,16 @@ init();
   {
     const element = 
 <header id="header">
-	<h1>Index of {
-	path.substring(0, path.length - 1).split("/").map((part, index, parts) =>
-		<><a href={`${'../'.repeat(parts.length - index - 1)}${accessKeySuffix}`}>{part}/</a> </>)}
-	</h1>
-	<div class="toolbar">
+  <h1>Index of {
+  path.substring(0, path.length - 1).split("/").map((part, index, parts) =>
+    <><a href={`${'../'.repeat(parts.length - index - 1)}${accessKeySuffix}`}>{part}/</a> </>)}
+  </h1>
+  <div class="toolbar">
     <button id="downloadFile" type="button" {...{onclick: "download()"}}>Download</button>
     <button id="uploadFiles" type="button" {...{onclick: "upload()"}} disabled>Upload</button>
     <button id="uploadFolder" type="button" {...{onclick: "upload(true)"}} disabled>Upload folder</button>
     <button id="delete" type="button" {...{onclick: "deleteSelection()"}} disabled>Delete</button>
-	</div>
+  </div>
 </header>
 
     return element;
