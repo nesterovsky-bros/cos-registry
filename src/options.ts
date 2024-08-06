@@ -10,6 +10,8 @@ const url = process.env.APP_URL ??
     `http://localhost:${port}/` : 
     `https://${process.env.CE_APP}.${process.env.CE_SUBDOMAIN}.${process.env.CE_DOMAIN}/`);
 
+const cosPrefix = process.env.APP_COS_PREFIX ?? "CLOUD_OBJECT_STORAGE";
+
 export const options =
 {
   local,
@@ -21,26 +23,24 @@ export const options =
   // Clould Object Storage binding is required.
   cos:
   {
-    endpoints: process.env.CLOUD_OBJECT_STORAGE_ENDPOINTS ??
-      error("CLOUD_OBJECT_STORAGE_ENDPOINTS"),
-    resourceInstanceId: process.env.CLOUD_OBJECT_STORAGE_RESOURCE_INSTANCE_ID ??
-      error("CLOUD_OBJECT_STORAGE_RESOURCE_INSTANCE_ID"),
-    apiKey: process.env.CLOUD_OBJECT_STORAGE_APIKEY ??
-      error("CLOUD_OBJECT_STORAGE_APIKEY"),
+    endpoints: process.env[`${cosPrefix}_ENDPOINTS`] ?? error(`${cosPrefix}_ENDPOINTS`),
+    resourceInstanceId: process.env[`${cosPrefix}_RESOURCE_INSTANCE_ID`] ??
+      error(`${cosPrefix}_RESOURCE_INSTANCE_ID`),
+    apiKey: process.env[`${cosPrefix}_APIKEY`] ?? error(`${cosPrefix}_APIKEY`),
   },
 
   // Bucket is required.
   bucket: process.env.APP_BUCKET ?? error("APP_BUCKET"),
 
   iamApiUrl: process.env.IAM_API_URL ?? "https://iam.cloud.ibm.com/v1/",
-  apiKey: process.env.APP_APIKEY ?? process.env.CLOUD_OBJECT_STORAGE_APIKEY,
+  apiKey: process.env.APP_APIKEY ?? process.env[`${cosPrefix}_APIKEY`],
   
   // Users Service ID is required.
   usersServiceId: process.env.APP_USERS_SERVICE_ID ?? error("APP_USERS_SERVICE_ID"),
 
-  authCacheSize: toNumber(process.env.AUTH_CACHE_SIZE) ?? 1000,
-  authCacheExpirationInMinutes: toNumber(process.env.AUTH_CATCH_TTL_MINUTES) ?? 10 * 60 * 1000,
-  github: process.env.GITHUB_SOURCES ?? "https://github.com/nesterovsky-bros/cos-registry",
+  authCacheSize: toNumber(process.env.APP_AUTH_CACHE_SIZE) ?? 1000,
+  authCacheExpirationInMinutes: toNumber(process.env.APP_AUTH_CACHE_TTL_MINUTES) ?? 10 * 60 * 1000,
+  github: process.env.APP_GITHUB ?? "https://github.com/nesterovsky-bros/cos-registry",
 
   api: [] as 
   {
