@@ -23,7 +23,7 @@ export const options =
   // Clould Object Storage binding is required.
   cos:
   {
-    endpoints: process.env[`${cosPrefix}_ENDPOINTS`] ?? error(`${cosPrefix}_ENDPOINTS`),
+    endpoints: process.env[`${cosPrefix}_ENDPOINTS`] ?? "https://control.cloud-object-storage.cloud.ibm.com/v2/endpoints",
     resourceInstanceId: process.env[`${cosPrefix}_RESOURCE_INSTANCE_ID`] ??
       error(`${cosPrefix}_RESOURCE_INSTANCE_ID`),
     apiKey: process.env[`${cosPrefix}_APIKEY`] ?? error(`${cosPrefix}_APIKEY`),

@@ -3,7 +3,6 @@
 # Default values for optional parameters
 APP_REPO_URL="https://github.com/nesterovsky-bros/cos-registry.git"
 APP_REPO_BRANCH="main"
-USE_EXISTING_COS="false"
 
 # Function to display help message
 usage() {
@@ -63,8 +62,14 @@ USERS_CONTAINER_SERVICE_ID_NAME=${USERS_CONTAINER_SERVICE_ID_NAME:-"$APP_NAME-us
 
 # Install jq if not present
 if ! command -v jq &> /dev/null; then
-  echo "jq not found, installing..."
+  echo "Installing jq..."
   sudo apt-get install -y jq || { echo "Failed to install jq"; exit 1; }
+fi
+
+# Install IBM Cloud CLI if not present
+if ! command -v ibmcloud &> /dev/null; then
+  echo "Installing IBM Cloud CLI..."
+  curl -fsSL https://clis.cloud.ibm.com/install/linux | sh || { echo "Failed to install IBM Cloud CLI"; exit 1; }
 fi
 
 # Install required IBM Cloud plugins if not present
@@ -76,11 +81,14 @@ for plugin in cloud-object-storage code-engine; do
 done
 
 # Login to IBM Cloud
+echo "Logging in to IBM Cloud..."
 ibmcloud login --apikey "$IBM_CLOUD_API_KEY" -r "$REGION" -g "$RESOURCE_GROUP" || { echo "Failed to login to IBM Cloud"; exit 1; }
 
 # Create or select existing Cloud Object Storage instance
+echo "Checking Cloud Object Storage instance..."
 COS_INSTANCE_CRN_GUID=$(ibmcloud resource service-instance "$COS_INSTANCE_NAME" --id --quiet 2>/dev/null)
 if [[ -z "$COS_INSTANCE_CRN_GUID" ]]; then
+  echo "Creating Cloud Object Storage instance..."
   ibmcloud resource service-instance-create "$COS_INSTANCE_NAME" cloud-object-storage standard global -g "$RESOURCE_GROUP" || { echo "Failed to create Cloud Object Storage instance"; exit 1; }
   COS_INSTANCE_CRN_GUID=$(ibmcloud resource service-instance "$COS_INSTANCE_NAME" --id --quiet)
 fi
@@ -88,60 +96,74 @@ COS_INSTANCE_CRN=$(echo "$COS_INSTANCE_CRN_GUID" | awk '{print $1}')
 COS_INSTANCE_GUID=$(echo "$COS_INSTANCE_CRN_GUID" | awk '{print $2}')
 
 # Create or reuse existing bucket
+echo "Checking Cloud Object Storage bucket..."
 if ! ibmcloud cos bucket-head --bucket "$COS_BUCKET_NAME" --region "$REGION" --output json 2>/dev/null; then
+  echo "Creating Cloud Object Storage bucket..."
   ibmcloud cos bucket-create --bucket "$COS_BUCKET_NAME" --region "$REGION" --ibm-service-instance-id "$COS_INSTANCE_CRN" || { echo "Failed to create bucket"; exit 1; }
 fi
 
 # Create or reuse Service ID for app user
+echo "Checking Service ID for app user..."
 if ! ibmcloud iam service-id "$APP_USER_SERVICE_ID_NAME" --quiet 2>/dev/null; then
+  echo "Creating Service ID for app user..."
   ibmcloud iam service-id-create "$APP_USER_SERVICE_ID_NAME" -d "Service ID for app user" || { echo "Failed to create Service ID for app user"; exit 1; }
 fi
 APP_USER_SERVICE_ID=$(ibmcloud iam service-id "$APP_USER_SERVICE_ID_NAME" --uuid --quiet)
 
 # Create an API key for the Service ID
-if ! ibmcloud iam service-api-key "$APP_USER_SERVICE_ID_NAME-api-key" --quiet 2>/dev/null; then
+echo "Checking API key for app user..."
+if ! ibmcloud iam service-api-key "$APP_USER_SERVICE_ID_NAME-api-key" "$APP_USER_SERVICE_ID_NAME" --quiet 2>/dev/null; then
+  echo "Creating API key for app user..."
   APP_USER_API_KEY=$(ibmcloud iam service-api-key-create "$APP_USER_SERVICE_ID_NAME-api-key" "$APP_USER_SERVICE_ID_NAME" -d "API key for app user" --output JSON | jq -r .apikey) || { echo "Failed to create API key for app user"; exit 1; }
 else
-  APP_USER_API_KEY=$(ibmcloud iam service-api-key "$APP_USER_SERVICE_ID_NAME-api-key" --output JSON | jq -r .apikey)
+  APP_USER_API_KEY=$(ibmcloud iam service-api-key "$APP_USER_SERVICE_ID_NAME-api-key" "$APP_USER_SERVICE_ID_NAME" --output JSON | jq -r .apikey)
 fi
 
 # Assign write access to the Cloud Object Storage instance
-ibmcloud iam service-policy-create "$APP_USER_SERVICE_ID" --roles Writer --service-name cloud-object-storage --service-instance "$COS_INSTANCE_GUID" || { echo "Failed to assign write access to Cloud Object Storage instance"; exit 1; }
+echo "Assigning write access to Cloud Object Storage instance..."
+if ! ibmcloud iam service-policies "$APP_USER_SERVICE_ID" --output json | jq -e '.[] | select(.resources[].attributes[].value == "'$COS_INSTANCE_GUID'") | select(.roles[].display_name == "Writer")' > /dev/null; then
+  ibmcloud iam service-policy-create "$APP_USER_SERVICE_ID" --roles Writer --service-name cloud-object-storage --service-instance "$COS_INSTANCE_GUID" || { echo "Failed to assign write access to Cloud Object Storage instance"; exit 1; }
+fi
 
 # Assign IAM Identity keys inspection to the Service ID
-ibmcloud iam service-policy-create "$APP_USER_SERVICE_ID" --roles Operator --service-name iam-identity || { echo "Failed to assign IAM Identity keys inspection to Service ID"; exit 1; }
+echo "Assigning IAM Identity keys inspection to Service ID..."
+if ! ibmcloud iam service-policies "$APP_USER_SERVICE_ID" --output json | jq -e '.[] | select(.resources[].attributes[].value == "iam-identity") | select(.roles[].display_name == "Operator")' > /dev/null; then
+  ibmcloud iam service-policy-create "$APP_USER_SERVICE_ID" --roles Operator --service-name iam-identity || { echo "Failed to assign IAM Identity keys inspection to Service ID"; exit 1; }
+fi
 
 # Create or reuse Service ID for user management
+echo "Checking Service ID for user management..."
 if ! ibmcloud iam service-id "$USERS_CONTAINER_SERVICE_ID_NAME" --quiet 2>/dev/null; then
+  echo "Creating Service ID for user management..."
   ibmcloud iam service-id-create "$USERS_CONTAINER_SERVICE_ID_NAME" -d "Service ID for user management" || { echo "Failed to create Service ID for user management"; exit 1; }
 fi
 USERS_CONTAINER_SERVICE_ID=$(ibmcloud iam service-id "$USERS_CONTAINER_SERVICE_ID_NAME" --uuid --quiet)
 
 # Create or reuse Code Engine project
+echo "Checking Code Engine project..."
 if ! ibmcloud ce project get --name "$CODE_ENGINE_PROJECT_NAME" --quiet 2>/dev/null; then
+  echo "Creating Code Engine project..."
   ibmcloud ce project create --name "$CODE_ENGINE_PROJECT_NAME" --region "$REGION" --resource-group "$RESOURCE_GROUP" || { echo "Failed to create Code Engine project"; exit 1; }
 fi
 
 # Select Code Engine project
+echo "Selecting Code Engine project..."
 ibmcloud ce project select --name "$CODE_ENGINE_PROJECT_NAME" || { echo "Failed to select Code Engine project"; exit 1; }
 
 # Check if application already exists
+echo "Checking if application already exists..."
 if ibmcloud ce application get --name "$APP_NAME" --quiet 2>/dev/null; then
   echo "Error: Application with name $APP_NAME already exists."
   exit 1
 fi
 
-# Create a service binding prefix
-BINDING_PREFIX="${APP_NAME}-binding"
-
-# Create a secret for the Cloud Object Storage service binding
-ibmcloud ce secret create --name "$BINDING_PREFIX" --from-literal "cos_api_key=$APP_USER_API_KEY" --from-literal "cos_instance_id=$COS_INSTANCE_CRN" || { echo "Failed to create secret for Cloud Object Storage service binding"; exit 1; }
+# Create configmap for application
+echo "Creating configmap for application..."
+ibmcloud ce configmap create --name "${APP_NAME}_CONFIG" --from-literal=CLOUD_OBJECT_STORAGE_RESOURCE_INSTANCE_ID="$COS_INSTANCE_CRN" --from-literal=CLOUD_OBJECT_STORAGE_APIKEY="$APP_USER_API_KEY" --from-literal=APP_USER_SERVICE_ID="$USERS_CONTAINER_SERVICE_ID" --from-literal=APP_BUCKET="$COS_BUCKET_NAME" || { echo "Failed to create configmap"; exit 1; }
 
 # Create an application within the Code Engine project
-ibmcloud ce application create --name "$APP_NAME" --source "$APP_REPO_URL" --commit "$APP_REPO_BRANCH" --build-strategy buildpacks --env APP_BUCKET="$COS_BUCKET_NAME" --env APP_USER_SERVICE_ID="$USERS_CONTAINER_SERVICE_ID_NAME" --env APP_COS_PREFIX="$BINDING_PREFIX" --scale-down-delay 120 || { echo "Failed to create application"; exit 1; }
-
-# Deploy the application
-ibmcloud ce application deploy --name "$APP_NAME" || { echo "Failed to deploy application"; exit 1; }
+echo "Creating application..."
+ibmcloud ce application create --name "$APP_NAME" --source "$APP_REPO_URL" --commit "$APP_REPO_BRANCH" --build-strategy buildpacks --env-from-configmap "${APP_NAME}_CONFIG" --scale-down-delay 120 --no-wait || { echo "Failed to create application"; exit 1; }
 
 echo "Setup complete. Your application is now running."
 echo "App User Service ID: $APP_USER_SERVICE_ID_NAME ($APP_USER_SERVICE_ID)"
