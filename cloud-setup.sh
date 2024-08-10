@@ -55,6 +55,12 @@ if [[ -z "$IBM_CLOUD_API_KEY" ]]; then
   exit 1
 fi
 
+# Validate application name
+if [[ ! "$APP_NAME" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]]; then
+  echo "Error: Application name must consist of lower case alphanumeric characters or '-', and must start and end with an alphanumeric character."
+  exit 1
+fi
+
 # Set default values for optional parameters
 COS_BUCKET_NAME=${COS_BUCKET_NAME:-$APP_NAME}
 APP_USER_SERVICE_ID_NAME=${APP_USER_SERVICE_ID_NAME:-"$APP_NAME-app-user"}
@@ -83,6 +89,31 @@ done
 # Login to IBM Cloud
 echo "Logging in to IBM Cloud..."
 ibmcloud login --apikey "$IBM_CLOUD_API_KEY" -r "$REGION" -g "$RESOURCE_GROUP" || { echo "Failed to login to IBM Cloud"; exit 1; }
+
+# Select or create Code Engine project
+echo "Checking Code Engine project..."
+if ! ibmcloud ce project get --name "$CODE_ENGINE_PROJECT_NAME" --quiet 2>/dev/null; then
+  echo "Creating Code Engine project..."
+  ibmcloud ce project create --name "$CODE_ENGINE_PROJECT_NAME" --region "$REGION" --resource-group "$RESOURCE_GROUP" || { echo "Failed to create Code Engine project"; exit 1; }
+fi
+
+# Select Code Engine project
+echo "Selecting Code Engine project..."
+ibmcloud ce project select --name "$CODE_ENGINE_PROJECT_NAME" || { echo "Failed to select Code Engine project"; exit 1; }
+
+# Check if application already exists
+echo "Checking if application already exists..."
+if ibmcloud ce application get --name "$APP_NAME" --quiet 2>/dev/null; then
+  echo "Error: Application with name $APP_NAME already exists."
+  exit 1
+fi
+
+# Check if configmap already exists
+echo "Checking if configmap already exists..."
+if ibmcloud ce secret get --name "${APP_NAME}-config" --quiet 2>/dev/null; then
+  echo "Error: Configmap with name ${APP_NAME}-config already exists."
+  exit 1
+fi
 
 # Create or select existing Cloud Object Storage instance
 echo "Checking Cloud Object Storage instance..."
@@ -122,7 +153,7 @@ fi
 # Assign write access to the Cloud Object Storage instance
 echo "Assigning write access to Cloud Object Storage instance..."
 if ! ibmcloud iam service-policies "$APP_USER_SERVICE_ID" --output json | jq -e '.[] | select(.resources[].attributes[].value == "'$COS_INSTANCE_GUID'") | select(.roles[].display_name == "Writer")' > /dev/null; then
-  ibmcloud iam service-policy-create "$APP_USER_SERVICE_ID" --roles Writer --service-name cloud-object-storage --service-instance "$COS_INSTANCE_GUID" || { echo "Failed to assign write access to Cloud Object Storage instance"; exit 1; }
+  ibmcloud iam service-policy-create "$APP_USER_SERVICE_ID" --roles Writer --service-instance "$COS_INSTANCE_GUID" || { echo "Failed to assign write access to Cloud Object Storage instance"; exit 1; }
 fi
 
 # Assign IAM Identity keys inspection to the Service ID
@@ -139,31 +170,13 @@ if ! ibmcloud iam service-id "$USERS_CONTAINER_SERVICE_ID_NAME" --quiet 2>/dev/n
 fi
 USERS_CONTAINER_SERVICE_ID=$(ibmcloud iam service-id "$USERS_CONTAINER_SERVICE_ID_NAME" --uuid --quiet)
 
-# Create or reuse Code Engine project
-echo "Checking Code Engine project..."
-if ! ibmcloud ce project get --name "$CODE_ENGINE_PROJECT_NAME" --quiet 2>/dev/null; then
-  echo "Creating Code Engine project..."
-  ibmcloud ce project create --name "$CODE_ENGINE_PROJECT_NAME" --region "$REGION" --resource-group "$RESOURCE_GROUP" || { echo "Failed to create Code Engine project"; exit 1; }
-fi
-
-# Select Code Engine project
-echo "Selecting Code Engine project..."
-ibmcloud ce project select --name "$CODE_ENGINE_PROJECT_NAME" || { echo "Failed to select Code Engine project"; exit 1; }
-
-# Check if application already exists
-echo "Checking if application already exists..."
-if ibmcloud ce application get --name "$APP_NAME" --quiet 2>/dev/null; then
-  echo "Error: Application with name $APP_NAME already exists."
-  exit 1
-fi
-
 # Create configmap for application
 echo "Creating configmap for application..."
-ibmcloud ce configmap create --name "${APP_NAME}_CONFIG" --from-literal=CLOUD_OBJECT_STORAGE_RESOURCE_INSTANCE_ID="$COS_INSTANCE_CRN" --from-literal=CLOUD_OBJECT_STORAGE_APIKEY="$APP_USER_API_KEY" --from-literal=APP_USER_SERVICE_ID="$USERS_CONTAINER_SERVICE_ID" --from-literal=APP_BUCKET="$COS_BUCKET_NAME" || { echo "Failed to create configmap"; exit 1; }
+ibmcloud ce secret create --name "${APP_NAME}-config" --from-literal=CLOUD_OBJECT_STORAGE_RESOURCE_INSTANCE_ID="$COS_INSTANCE_CRN" --from-literal=CLOUD_OBJECT_STORAGE_APIKEY="$APP_USER_API_KEY" --from-literal=APP_USERS_SERVICE_ID="$USERS_CONTAINER_SERVICE_ID" --from-literal=APP_BUCKET="$COS_BUCKET_NAME" || { echo "Failed to create configmap"; exit 1; }
 
 # Create an application within the Code Engine project
 echo "Creating application..."
-ibmcloud ce application create --name "$APP_NAME" --source "$APP_REPO_URL" --commit "$APP_REPO_BRANCH" --build-strategy buildpacks --env-from-configmap "${APP_NAME}_CONFIG" --scale-down-delay 120 --no-wait || { echo "Failed to create application"; exit 1; }
+ibmcloud ce application create --name "$APP_NAME" --source "$APP_REPO_URL" --commit "$APP_REPO_BRANCH" --build-strategy buildpacks --env-from-secret "${APP_NAME}-config" --scale-down-delay 120 --no-wait || { echo "Failed to create application"; exit 1; }
 
 echo "Setup complete. Your application is now running."
 echo "App User Service ID: $APP_USER_SERVICE_ID_NAME ($APP_USER_SERVICE_ID)"
