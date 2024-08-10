@@ -153,7 +153,9 @@ Check:
     const owner = accessKey === options.apiKey;
     
     if (!apiKey || apiKey.locked || apiKey.disabled || 
-      !owner && apiKey.iam_id !== options.usersServiceId)
+      !owner && 
+      apiKey.iam_id !== options.usersServiceId &&
+      apiKey.iam_id !== `iam-${options.usersServiceId}`)
     {
       break Check;
     }
