@@ -105,7 +105,7 @@ ibmcloud ce project select --name "$CODE_ENGINE_PROJECT_NAME" || { echo "Failed 
 echo "Checking if application already exists..."
 if ibmcloud ce application get --name "$APP_NAME" --quiet 2>/dev/null; then
   echo "Application already exists. Rebuilding and redeploying..."
-  ibmcloud ce application update --name "$APP_NAME" --source "$APP_REPO_URL" --commit "$APP_REPO_BRANCH" --no-wait || { echo "Failed to update application"; exit 1; }
+  ibmcloud ce application update --name "$APP_NAME" --source "$APP_REPO_URL" --commit "$APP_REPO_BRANCH" --scale-down-delay 120 --no-wait || { echo "Failed to update application"; exit 1; }
   exit 0
 fi
 
