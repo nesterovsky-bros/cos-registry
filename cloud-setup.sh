@@ -104,8 +104,9 @@ ibmcloud ce project select --name "$CODE_ENGINE_PROJECT_NAME" || { echo "Failed 
 # Check if application already exists
 echo "Checking if application already exists..."
 if ibmcloud ce application get --name "$APP_NAME" --quiet 2>/dev/null; then
-  echo "Error: Application with name $APP_NAME already exists."
-  exit 1
+  echo "Application already exists. Rebuilding and redeploying..."
+  ibmcloud ce application update --name "$APP_NAME" --source "$APP_REPO_URL" --commit "$APP_REPO_BRANCH" --no-wait || { echo "Failed to update application"; exit 1; }
+  exit 0
 fi
 
 # Check if configmap already exists
@@ -145,7 +146,7 @@ APP_USER_SERVICE_ID=$(ibmcloud iam service-id "$APP_USER_SERVICE_ID_NAME" --uuid
 echo "Checking API key for app user..."
 if ! ibmcloud iam service-api-key "$APP_USER_SERVICE_ID_NAME-api-key" "$APP_USER_SERVICE_ID_NAME" --quiet 2>/dev/null; then
   echo "Creating API key for app user..."
-  APP_USER_API_KEY=$(ibmcloud iam service-api-key-create "$APP_USER_SERVICE_ID_NAME-api-key" "$APP_USER_SERVICE_ID_NAME" -d "API key for app user" --output JSON | jq -r .apikey) || { echo "Failed to create API key for app user"; exit 1; }
+  APP_USER_API_KEY=$(ibmcloud iam service-api-key-create "$APP_USER_SERVICE_ID_NAME-api-key" "$APP_USER_SERVICE_ID_NAME" -d "API key for app user" --force --output JSON | jq -r .apikey) || { echo "Failed to create API key for app user"; exit 1; }
 else
   APP_USER_API_KEY=$(ibmcloud iam service-api-key "$APP_USER_SERVICE_ID_NAME-api-key" "$APP_USER_SERVICE_ID_NAME" --output JSON | jq -r .apikey)
 fi
@@ -153,13 +154,13 @@ fi
 # Assign write access to the Cloud Object Storage instance
 echo "Assigning write access to Cloud Object Storage instance..."
 if ! ibmcloud iam service-policies "$APP_USER_SERVICE_ID" --output json | jq -e '.[] | select(.resources[].attributes[].value == "'$COS_INSTANCE_GUID'") | select(.roles[].display_name == "Writer")' > /dev/null; then
-  ibmcloud iam service-policy-create "$APP_USER_SERVICE_ID" --roles Writer --service-instance "$COS_INSTANCE_GUID" || { echo "Failed to assign write access to Cloud Object Storage instance"; exit 1; }
+  ibmcloud iam service-policy-create "$APP_USER_SERVICE_ID" --roles Writer --service-instance "$COS_INSTANCE_GUID" --force || { echo "Failed to assign write access to Cloud Object Storage instance"; exit 1; }
 fi
 
 # Assign IAM Identity keys inspection to the Service ID
 echo "Assigning IAM Identity keys inspection to Service ID..."
 if ! ibmcloud iam service-policies "$APP_USER_SERVICE_ID" --output json | jq -e '.[] | select(.resources[].attributes[].value == "iam-identity") | select(.roles[].display_name == "Operator")' > /dev/null; then
-  ibmcloud iam service-policy-create "$APP_USER_SERVICE_ID" --roles Operator --service-name iam-identity || { echo "Failed to assign IAM Identity keys inspection to Service ID"; exit 1; }
+  ibmcloud iam service-policy-create "$APP_USER_SERVICE_ID" --roles Operator --service-name iam-identity --force || { echo "Failed to assign IAM Identity keys inspection to Service ID"; exit 1; }
 fi
 
 # Create or reuse Service ID for user management

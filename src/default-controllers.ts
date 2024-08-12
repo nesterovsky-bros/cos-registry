@@ -162,7 +162,7 @@ async function post(request: Request, response: Response, next: NextFunction)
 
           if (item.file && validpath(itempath))
           {
-            yield { path: itempath.substring(1), size: item.size! };
+            yield { path: itempath, size: item.size! };
           }
         }
       }
@@ -243,13 +243,14 @@ async function post(request: Request, response: Response, next: NextFunction)
 
         for await(let item of list())
         {
-          getObjectStream(item.path.substring(1)).pipe(
-            pack.entry(
-            {
-              name: item.path.substring(path.length),
-              size: item.size
-            })).
-            on("error", error => response.status(500).send(error.message));
+          getObjectStream(item.path).
+            on("error", error => response.status(500).send(error.message)).
+            pipe(
+              pack.entry(
+              {
+                name: item.path.substring(path.length - 1),
+                size: item.size
+              }));
         }
 
         pack.finalize();

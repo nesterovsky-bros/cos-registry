@@ -4,6 +4,7 @@ import { listObjects } from "./store.js";
 import { render } from "preact-render-to-string";
 import { options } from "./options.js";
 import { matchrole } from "./authorize.js";
+import { version } from "../package.json";
 
 export async function listDirectory(request: Request, response: Response)
 {
@@ -44,10 +45,10 @@ ${render(tableHead())}
   response.write(
 `</tbody>
 </table>
+<hr>
+<div class="copyright">©2024 A&V. <a href="${options.github}?tab=MIT-1-ov-file#readme">MIT License</a>. Version ${version}</div>
 </form>
 ${render(script())}
-<hr>
-<div class="copyright">©2024 A&V. <a href="${options.github}?tab=MIT-1-ov-file#readme">MIT License</a></div>
 </body></html>`);
 
   response.end();
@@ -83,7 +84,6 @@ body
 {
   border-collapse: separate;
   border-spacing: 0;
-  margin: 0 0 20px; 
 }
 
 #index th 
@@ -114,6 +114,11 @@ body
 #index td.length, td.modified { text-align:right; }
 a { color:#1ba1e2;text-decoration:none; }
 a:hover { color:#13709e;text-decoration:underline; }
+
+#main
+{
+  display: inline-block;
+}
 
 .copyright 
 {

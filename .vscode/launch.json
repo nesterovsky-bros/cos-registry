@@ -1,0 +1,44 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "bashdb",
+      "request": "launch",
+      "name": "cloud-setup.sh",
+      "cwd": "${workspaceFolder}",
+      "program": "${workspaceFolder}/cloud-setup.sh",
+      "args": 
+      [
+        "--resource-group", "SPS for modsys"         , // IBM Cloud resource group (required)
+        "--region", "us-east"                         , // IBM Cloud region (required)
+        "--cos-instance-name", "Cloud Object Storage"   , // Name of the Cloud Object Storage instance (required)
+//      "--cos-bucket-name", "nykredit"       , // Name of the Cloud Object Storage bucket (required)
+        "--code-engine-project", "registries"      , // Code Engine project name (required)
+        "--app-name", "nykredit"                     , // Application name (required)
+//      "--app-repo-url", "<repo-url>"                 , // Application repository URL (default: https://github.com/nesterovsky-bros/cos-registry.git)
+//      "--app-repo-branch", "<repo-branch>"           , // Application repository branch (default: main)
+        "--api-key", "yxHAxtH3GoOGTDaTilRMRGQZlNZ15r8TgxE8Q6pBPRD7"                       , // IBM Cloud API key (optional, can also be set via IBM_CLOUD_API_KEY environment variable)
+//      "--app-user-service-id", "<service-id>"        , // Service ID for app user (optional)
+//      "--users-container-service-id", "<service-id>" , // Service ID for user management (optional)
+      ]
+    },
+    {
+      "type": "bashdb",
+      "request": "launch",
+      "name": "manage-users.sh",
+      "cwd": "${workspaceFolder}",
+      "program": "${workspaceFolder}/manage-users.sh",
+      "args": 
+      [
+        "--action", "create"                        , // <create|delete|lock|unlock|change-role>  Action to perform (required)"
+        "--api-key", "yxHAxtH3GoOGTDaTilRMRGQZlNZ15r8TgxE8Q6pBPRD7"                       , // IBM Cloud API key (optional, can also be set via IBM_CLOUD_API_KEY environment variable)
+        "--users-container", "nykredit-users-container"     , // Name of the users container service ID (required)"
+        "--user", "owner"     , // Name of the access key (required for create, delete, lock, unlock, change-role)"
+        "--role", "owner"                            , // <reader|writer|owner> Role for the access key (required for create, change-role)"
+      ]
+    }
+  ]
+}
