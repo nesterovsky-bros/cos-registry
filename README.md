@@ -83,7 +83,7 @@ dotnet nuget add source --name source-name
 ## Steps to Create and Manage the Registry Application
 
 ### TL;DR
-The following are lengthy steps on the IBM Cloud site to configure a new registry application. If you prefer not to follow detailed instructions, you can use the [bash script](cloud-setup.sh) that will do all the work for you.
+The following are lengthy steps on the IBM Cloud site to configure and manage a new registry application. If you prefer not to follow detailed instructions, you can use the [cloud-setup.sh](cloud-setup.sh) and [manage-users.sh](manage-users.sh) that will do all the work for you.
 
 ### Detailed Steps
 
