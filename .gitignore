@@ -11,6 +11,8 @@
 /uploads
 
 .env
+/.vscode
+/.vs
 
 # IDEs and editors
 /.idea
