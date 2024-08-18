@@ -217,7 +217,7 @@ export function authorize(role: Role)
     {
       const authInfo = request.authInfo!;
 
-      if (authInfo?.match?.(request.path.substring(1)) !== false && 
+      if (authInfo?.match?.(decodeURI(request.path).substring(1)) !== false && 
         matchrole(authInfo, role))
       {
         next();

@@ -2,8 +2,8 @@ import fs from "fs";
 import zlib from "node:zlib";
 import tar from "tar-stream";
 import { Express, NextFunction, Request, Response } from "express";
-import { authenticate, authorize, forbidden, matchrole, servererror, validpath } from "./authorize.js";
-import { deleteObjects, getObjectStream, listObjects, setObjectStream } from "./store.js";
+import { authenticate, authorize, forbidden, matchrole, notfound, servererror, validpath } from "./authorize.js";
+import { copy, copyOne, deleteObjects, getObjectHeader, getObjectStream, getZipDirectory, listObjects, setObjectStream } from "./store.js";
 import multer from "multer";
 import { listDirectory } from "./directory-list.js";
 import { options } from "./options.js";
@@ -38,7 +38,7 @@ function favicon(request: Request, response: Response)
 
   if (matchrole(request.authInfo, "reader"))
   {
-    getObjectStream(request.path.substring(1)).
+    getObjectStream(decodeURI(request.path).substring(1)).
       on("error", error => (error as any)?.statusCode === 404 ? 
         defaultFavicon(request, response) :
         servererror(request, response, error)).
@@ -55,13 +55,70 @@ function defaultFavicon(_: Request, response: Response)
   response.sendFile("favicon.svg", { root: import.meta.dirname });
 }
 
-function read(request: Request, response: Response) 
+async function read(request: Request, response: Response) 
 {
-  const path = request.path;
+  const path = decodeURI(request.path);
+  const zipIndex = path.toLowerCase().indexOf(".zip");
+
+  if (zipIndex >= 0)
+  {
+    const zip = path.substring(0, zipIndex + 4);
+    const entry = path.substring(zipIndex + 4);
+
+    try
+    {
+      const header = await getObjectHeader(zip.substring(1));
+
+      if (header?.DeleteMarker !== false)
+      {
+        if (!entry)
+        {
+          listDirectory(request, response, zip, "/", header);
+        }
+        else if (entry.endsWith("/"))
+        {
+          listDirectory(request, response, zip, entry);
+        }
+        else
+        {
+          const entryPath = entry.substring(1);
+          const directory = await getZipDirectory(zip.substring(1), header);
+          const file = directory.files.find(file => file.path === entryPath);
+
+          if (!file)
+          {
+            notfound(request, response);
+          }
+          else
+          {
+            if (!contentType(path, response))
+            {
+              const p = path.lastIndexOf(".");
+
+              if (p >= 0)
+              {
+                response.type(path.substring(p));
+              }
+            }
+
+            file.stream().
+              on("error", error => servererror(request, response, error)).
+              pipe(response);
+          }
+        }
+
+        return;
+      }
+    }
+    catch(e)
+    {
+      // No object found. Continue regular.
+    }
+  }
 
   if (path.endsWith("/"))
   {
-    listDirectory(request, response);
+    listDirectory(request, response, path);
   }
   else
   {
@@ -69,12 +126,30 @@ function read(request: Request, response: Response)
   }
 }
 
-function streamObject(path: string, request: Request, response: Response)
+function contentType(path: string, response: Response)
 {
+  path = path.toLowerCase();
+
   if (path.endsWith(".pom") || path.endsWith(".nuspec"))
   {
     response.contentType("text/xml");
+
+    return true;
   }
+
+  if (path.endsWith(".md"))
+  {
+    response.contentType("text/html");
+
+    return true;
+  }
+
+  return false;
+}
+
+function streamObject(path: string, request: Request, response: Response)
+{
+  contentType(path, response);
 
   getObjectStream(path).
     on("error", error => servererror(request, response, error)).
@@ -83,7 +158,7 @@ function streamObject(path: string, request: Request, response: Response)
 
 async function put(request: Request, response: Response) 
 {
-  const path = request.path;
+  const path = decodeURI(request.path);
 
   if (!path.endsWith("/"))
   {
@@ -95,7 +170,7 @@ async function put(request: Request, response: Response)
 
 async function delete_(request: Request, response: Response)
 {
-  const path = request.path;
+  const path = decodeURI(request.path);
 
   if (path.endsWith("/"))
   {
@@ -138,7 +213,7 @@ async function post(request: Request, response: Response, next: NextFunction)
   try
   {
     const authInfo = request.authInfo;
-    const path = request.path;
+    const path = decodeURI(request.path);
 
     if (!path.endsWith("/"))
     {
@@ -175,7 +250,7 @@ async function post(request: Request, response: Response, next: NextFunction)
     {
       case "delete":
       {
-        if (authInfo?.role !== "writer" && authInfo?.role !== "owner")
+        if (!matchrole(authInfo, "writer"))
         {
           forbidden(request, response);
       
@@ -204,7 +279,7 @@ async function post(request: Request, response: Response, next: NextFunction)
       }
       case "upload":
       {
-        if (authInfo?.role !== "writer" && authInfo?.role !== "owner")
+        if (!matchrole(authInfo, "writer"))
         {
           forbidden(request, response);
       
@@ -255,6 +330,35 @@ async function post(request: Request, response: Response, next: NextFunction)
 
         pack.finalize();
 
+        return;
+      }
+      case "copy":
+      {
+        const target = request.body.target;
+
+        if (target?.startsWith("/") && paths.length)
+        {
+          try
+          {
+            await Promise.all(paths.map(async name => 
+            {
+              const from = (path + name).substring(1);
+              const to = (paths.length > 1 && target.endsWith("/") ? target + name : target).substring(1);
+
+              await (to.endsWith("/") ? copy(from, to, authInfo) : copyOne(from, to, authInfo));
+            }));
+
+          }
+          catch(error)
+          {
+            servererror(request, response, error as Error);
+
+            return;
+          }
+        }
+
+        read(request, response);
+  
         return;
       }
       default:

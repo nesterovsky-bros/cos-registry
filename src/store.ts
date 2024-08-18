@@ -3,6 +3,7 @@ import ibm, { Request } from "ibm-cos-sdk";
 import { AuthInfo } from './model/auth.js';
 import { DirectoryItem } from './model/directory-item.js';
 import { options } from './options.js';
+import unzipper, { CentralDirectory } from "unzipper";
 
 async function getEndpoint(): Promise<string|undefined>
 {
@@ -25,10 +26,46 @@ const s3 = new ibm.S3(
 });
 
 export type GetObjectOutput = ibm.S3.Types.GetObjectOutput;
+export type HeadObjectOutput = ibm.S3.Types.HeadObjectOutput;
+
+export async function getObjectHeader(path: string): Promise<HeadObjectOutput>
+{
+  return await s3.headObject({ Bucket: options.bucket, Key: path }).promise();
+}
 
 export function getObject(path: string): Request<ibm.S3.Types.GetObjectOutput, ibm.AWSError>
 {
   return s3.getObject({ Bucket: options.bucket, Key: path });
+}
+
+export function getZipDirectory(path: string, header?: HeadObjectOutput): Promise<CentralDirectory>
+{
+  const source = 
+  {
+    size: async () => 
+    {
+      const head = header ?? await getObjectHeader(path);
+
+      if (!head.ContentLength) 
+      {
+        return 0;
+      }
+
+      return head.ContentLength;
+    },
+    
+    stream: (offset: number, length: number) => 
+    {
+      return s3.getObject(
+      {
+        Bucket: options.bucket,
+        Key: path,
+        Range: `bytes=${offset}-${length ? offset + length : ""}`
+      }).createReadStream();
+    }
+  };
+
+  return (unzipper.Open as any).custom(source, options);
 }
 
 export function getObjectStream(path: string): stream.Readable
@@ -120,4 +157,60 @@ export async function deleteObjects(paths: string[])
       }
     }).promise();
   }
+}
+
+export async function copy(source: string, target: string, authInfo?: AuthInfo): Promise<boolean>
+{
+  if (authInfo?.match?.(target) === false)
+  {
+    return false;
+  }
+
+  let copied = false;
+  const batch: Promise<any>[] = [];
+
+  for await(let item of listObjects(source, authInfo, true))
+  {
+    if (item.file && authInfo?.match?.(target) !== false)
+    {
+      batch.push(s3.copyObject(
+      { 
+        CopySource: `${options.bucket}/${source + item.name}`,
+        Bucket: options.bucket,  
+        Key: target + item.name
+      }).promise());
+
+      if (batch.length >= 100)
+      {
+        await Promise.all(batch);
+        batch.length = 0;
+      }
+
+      copied = true;
+    }
+  }
+
+  if (batch.length)
+  {
+    await Promise.all(batch);
+  }
+
+  return copied;
+}
+
+export async function copyOne(source: string, target: string, authInfo?: AuthInfo): Promise<boolean>
+{
+  if (authInfo?.match?.(target) === false)
+  {
+    return false;
+  }
+
+  await s3.copyObject(
+  { 
+    CopySource: `${options.bucket}/${source}`,
+    Bucket: options.bucket,  
+    Key: target
+  }).promise();
+
+  return true;
 }

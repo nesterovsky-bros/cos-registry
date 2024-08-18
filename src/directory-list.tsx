@@ -1,15 +1,15 @@
 import { Request, Response } from "express";
 import { DirectoryItem } from "./model/directory-item.js";
-import { listObjects } from "./store.js";
+import { getZipDirectory, HeadObjectOutput, listObjects } from "./store.js";
 import { render } from "preact-render-to-string";
 import { options } from "./options.js";
 import { matchrole } from "./authorize.js";
 import { version } from "../package.json";
 
-export async function listDirectory(request: Request, response: Response)
+export async function listDirectory(request: Request, response: Response, path: string, entry?: string, header?: HeadObjectOutput)
 {
-  const path = request.path;
   const authInfo = request.authInfo;
+  const fullpath = entry ? path + entry : path;
   const accessKeySuffix = authInfo?.from === "accessKey" ?
     `?accessKey=${authInfo!.accessKey}` : ``;
 
@@ -18,10 +18,11 @@ export async function listDirectory(request: Request, response: Response)
   response.write(
 `<html lang="en">
 ${render(head())}
-<body>
+<body onload="init()">
 <form id="main" method="POST" enctype="multipart/form-data">
-<input type="hidden" id="action" name="action"/>
-<input type="file" name="files" hidden id="files" multiple onchange="onFilesChange()"/>
+<input type="hidden" name="action"/>
+<input type="hidden" name="target"/>
+<input type="file" name="files" hidden multiple onchange="onFilesChange()"/>
 ${render(bodyHeader())}
 <table id="index">
 ${render(tableHead())}
@@ -34,11 +35,62 @@ ${render(tableHead())}
     response.write(render(row({ name: "api/", selecable: false })));
   }
 
-  for await(let item of listObjects(path.substring(1), authInfo))
+  if (entry)
   {
-    if (item.name)
+    const prefix = entry.substring(1);
+    const directory = await getZipDirectory(path.substring(1), header);
+    const folders: { [path: string]: boolean } = {};
+
+    for(let file of directory.files)
     {
-      response.write(render(row(item)));
+      if (file.type === "File" && (!prefix || file.path?.startsWith(prefix)))
+      {
+        let name = file.path.substring(prefix.length);
+        const p = name.indexOf("/");
+
+        if (p >= 0)
+        {
+
+          name = name.substring(0, p + 1);
+
+          if (!folders[name])
+          {
+            folders[name] = true;
+
+            response.write(render(row({ name, file: false})));
+          }
+        }
+      }
+    }
+
+    for(let file of directory.files)
+    {
+      if (file.type === "File" && 
+        (!prefix || file.path?.startsWith(prefix)))
+      {
+        let name = file.path.substring(prefix.length);
+
+        if (name.indexOf("/") === -1)
+        {
+          response.write(render(row(
+          {
+            name: file.path.substring(prefix.length),
+            file: true,
+            size: file.uncompressedSize,
+            lastModified: file.lastModifiedDateTime
+          })));
+        }
+      }
+    }
+  }
+  else
+  {
+    for await(let item of listObjects(path.substring(1), authInfo))
+    {
+      if (item.name)
+      {
+        response.write(render(row(item)));
+      }
     }
   }
 
@@ -129,8 +181,8 @@ a:hover { color:#13709e;text-decoration:underline; }
 
     const element = 
 <head>
-  <base href={path}/>
-  <title>Index of {path}</title>
+  <base href={fullpath}/>
+  <title>Index of {fullpath}</title>
   <style dangerouslySetInnerHTML={{ __html:style }}></style>
 </head>;
 
@@ -140,36 +192,36 @@ a:hover { color:#13709e;text-decoration:underline; }
   function script()
   {
     const script = `
-const writer = ${matchrole(authInfo, "writer")};
+const writer = ${matchrole(authInfo, "writer") && !entry};
+const form = document.getElementById("main");
 
-function toggleSelections()
+function updateSelections()
 {
   const selections = document.querySelector("#index .selections");
   const selectionSelector = document.querySelectorAll("#index .selection");
-  const deleteButton = document.querySelector("#delete");
   const checked = selections.checked;
 
   selectionSelector.forEach(element => element.checked = checked);
-  
-  if (deleteButton)
-  {
-    deleteButton.disabled = !writer || !checked;
-  }
+  updateSelection();
 }
 
-function toggleSelection()
+function updateSelection()
 {
   const selections = document.querySelector("#index .selections");
   const selectionSelector = document.querySelectorAll("#index .selection");
-  const deleteButton = document.querySelector("#delete");
   const count = selectionSelector.length;
   let selected = 0;
 
   selectionSelector.forEach(element => element.checked && ++selected);
 
-  selections.checked = count === selected;
+  selections.disabled = !count;
+  selections.checked = count && count === selected;
   selections.indeterminate = selected && count !== selected;
-  deleteButton.disabled = selected === 0;
+
+  const canUpdate = writer && selected > 0;
+
+  form.copy.disabled = !canUpdate;
+  form.delete.disabled = !canUpdate;
 }
 
 function getSelection()
@@ -185,88 +237,71 @@ function getSelection()
 
 function deleteSelection()
 {
-  const form = document.getElementById("main");
-  const action = document.getElementById("action");
-  const files = document.getElementById("files");
-
-  if (!form || !action)
+  if (!getSelection().length || 
+    !confirm("Please confirm deletion of files or folders."))
   {
     return;
   }
 
-  if (!getSelection().length || !confirm("Please confirm deletion of files or folders."))
-  {
-    return;
-  }
-
-  if (files)
-  {
-    files.disabled = true;
-  }
-
-  action.value = "delete";
+  form.files.disabled = true;
+  form.action.value = "delete";
   form.submit();
   history.replaceState(null, "", location.url);
 }
 
-async function download(folder)
+function copySelection()
 {
-  const form = document.getElementById("main");
-  const action = document.getElementById("action");
-  const files = document.getElementById("files");
+  const selection = getSelection();
 
-  if (!form || !action)
+  if (!selection.length)
   {
     return;
   }
 
-  if (files)
+  let target = prompt(
+    "Enter target name", 
+    "${fullpath}" + (selection.length > 1 ? "Folder/": "Copy of " + selection[0]));
+
+  target = target?.trim();
+
+  if (!target || target === selection[0])
   {
-    files.disabled = true;
+    return;
   }
 
-  action.value = "download";
+  form.files.disabled = true;
+  form.action.value = "copy";
+  form.target.value = target;
+  form.submit();
+}
+
+async function download(folder)
+{
+  form.files.disabled = true;
+  form.action.value = "download";
   form.submit();
   history.replaceState(null, "", location.url);
 }
 
 function upload(folder)
 {
-  const form = document.getElementById("main");
-  const action = document.getElementById("action");
-  const files = document.getElementById("files");
-
-  if (!form || !action || !files)
-  {
-    return;
-  }
-
-  files.disabled = false;
+  form.files.disabled = false;
   
-  if ("webkitdirectory" in files)
+  if ("webkitdirectory" in form.files)
   {
-    files.webkitdirectory = !!folder;
+    form.files.webkitdirectory = !!folder;
   }
 
-  const newFiles = files.cloneNode();
+  const newFiles = form.files.cloneNode();
 
-  files.parentNode.replaceChild(newFiles, files);
-  action.value = "upload";
+  form.files.parentNode.replaceChild(newFiles, form.files);
+  form.action.value = "upload";
   newFiles.click();
 }
 
 function onFilesChange()
 {
-  const form = document.getElementById("main");
-  const action = document.getElementById("action");
-  const files = document.getElementById("files");
-
-  if (!form || !action || !files)
-  {
-    return;
-  }
-
-  if (files.disabled || action.value !== "upload" || !files.files.length)
+  if (form.files.disabled || form.action.value !== "upload" || !form.files.files.length)
   {
     return;
   }
@@ -277,31 +312,19 @@ function onFilesChange()
 
 function init()
 {
-  const uploadFolderButton = document.getElementById("uploadFolder");
-  const uploadFilesButton = document.getElementById("uploadFiles");
-  const filesInput = document.getElementById("files");
-
-  if (uploadFolderButton)
+  if ("webkitdirectory" in form.files)
   {
-    if (filesInput && "webkitdirectory" in filesInput)
-    {
-      uploadFolderButton.disabled = !writer;
-    }
-    else
-    {
-      uploadFolderButton.hidden = true;
-    }
+    form.uploadFolder.disabled = !writer;
+  }
+  else
+  {
+    form.uploadFolder.hidden = true;
   }
 
-  if (uploadFilesButton)
-  {
-    uploadFilesButton.disabled = !writer;
-  }
+  form.uploadFiles.disabled = !writer;
 
-  toggleSelection();
+  updateSelection();
 }
-
-init();
 `;        
 
     return <script dangerouslySetInnerHTML={{ __html:script}}></script>;
@@ -312,14 +335,15 @@ init();
     const element = 
 <header id="header">
   <h1>Index of {
-  path.substring(0, path.length - 1).split("/").map((part, index, parts) =>
+  fullpath.substring(0, fullpath.length - 1).split("/").map((part, index, parts) =>
     <><a href={`${'../'.repeat(parts.length - index - 1)}${accessKeySuffix}`}>{part}/</a> </>)}
   </h1>
   <div class="toolbar">
-    <button id="downloadFile" type="button" {...{onclick: "download()"}}>Download</button>
-    <button id="uploadFiles" type="button" {...{onclick: "upload()"}} disabled>Upload</button>
-    <button id="uploadFolder" type="button" {...{onclick: "upload(true)"}} disabled>Upload folder</button>
-    <button id="delete" type="button" {...{onclick: "deleteSelection()"}} disabled>Delete</button>
+    <button name="downloadFile" type="button" {...{onclick: "download()"}}>Download</button>
+    <button name="uploadFiles" type="button" {...{onclick: "upload()"}} disabled>Upload</button>
+    <button name="uploadFolder" type="button" {...{onclick: "upload(true)"}} disabled>Upload folder</button>
+    <button name="copy" type="button" {...{onclick: "copySelection()"}} disabled>Copy</button>
+    <button name="delete" type="button" {...{onclick: "deleteSelection()"}} disabled>Delete</button>
   </div>
 </header>
 
@@ -331,7 +355,7 @@ init();
     const element = 
 <thead>
   <tr>
-    <th><input type="checkbox" class="selections" {...{onclick: "toggleSelections()"}}/></th>
+    <th><input type="checkbox" class="selections" {...{onclick: "updateSelections()"}}/></th>
     <th>Name</th>
     <th>Size</th>
     <th>Last Modified</th>
@@ -347,8 +371,8 @@ init();
   <tr class={item.file ? "file" : "directory"}>
     <td>
     {
-      item.selecable == false ? null :
-      <input type="checkbox" name="path" value={item.name} class="selection" {...{onclick: "toggleSelection()"}}/>
+      entry || item.selecable === false ? null :
+      <input type="checkbox" name="path" value={item.name} class="selection" {...{onclick: "updateSelection()"}}/>
     }
     </td>
     <td class="name"><a href={item.href ?? item.name + accessKeySuffix}>{item.name}</a></td>
