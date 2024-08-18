@@ -100,6 +100,29 @@ ${render(tableHead())}
 <hr>
 <div class="copyright">©2024 A&V. <a href="${options.github}?tab=MIT-1-ov-file#readme">MIT License</a>. Version ${version}</div>
 </form>
+<dialog id="searchDialog">
+  <h4>Search content</h4>
+  <form>
+    <main>
+      <div>
+        <label>
+          Files pattern (comma separated globs):<br>
+          <input name="f" type="text"/>
+        </label>
+      </div>
+      <div>
+        <label>
+          Content regex:<br>
+          <input name="s" type="text"/>
+        </label>
+      </div>
+    </main>
+    <div class="dialog-footer">
+      <button value="cancel" formmethod="dialog">Cancel</button>
+      <button value="default" type="submit">Search</button>
+    </div>
+  </form>
+</dialog>
 ${render(script())}
 </body></html>`);
 
@@ -172,6 +195,37 @@ a:hover { color:#13709e;text-decoration:underline; }
   display: inline-block;
 }
 
+dialog
+{
+  padding: 0;
+  border: 0;
+}
+
+dialog h4
+{
+  font-weight: normal;
+  padding: 0 .25em;
+  margin: 0 0 .5em 0;
+  background: lightgrey; 
+}
+
+dialog>form
+{
+  margin: 0;
+  padding: 0 .5em;
+}
+
+dialog>form input[type=text]
+{
+  margin: 3px 0 7px 2em;
+}
+
+.dialog-footer
+{
+  padding: .5em;
+  text-align: right;
+}
+
 .copyright 
 {
   color: rgb(78, 78, 78);
@@ -235,7 +289,7 @@ function getSelection()
   return paths;
 }
 
-function deleteSelection()
+function delete_()
 {
   if (!getSelection().length || 
     !confirm("Please confirm deletion of files or folders."))
@@ -249,7 +303,7 @@ function deleteSelection()
   history.replaceState(null, "", location.url);
 }
 
-function copySelection()
+function copy_()
 {
   const selection = getSelection();
 
@@ -310,6 +364,13 @@ function onFilesChange()
   history.replaceState(null, "", location.url);
 }
 
+function search_()
+{
+  const dialog = document.getElementById("searchDialog");
+
+  dialog.showModal();
+}
+
 function init()
 {
   if ("webkitdirectory" in form.files)
@@ -342,8 +403,9 @@ function init()
     <button name="downloadFile" type="button" {...{onclick: "download()"}}>Download</button>
     <button name="uploadFiles" type="button" {...{onclick: "upload()"}} disabled>Upload</button>
     <button name="uploadFolder" type="button" {...{onclick: "upload(true)"}} disabled>Upload folder</button>
-    <button name="copy" type="button" {...{onclick: "copySelection()"}} disabled>Copy</button>
-    <button name="delete" type="button" {...{onclick: "deleteSelection()"}} disabled>Delete</button>
+    <button name="copy" type="button" {...{onclick: "copy_()"}} disabled>Copy</button>
+    <button name="delete" type="button" {...{onclick: "delete_()"}} disabled>Delete</button>
+    <button name="search" type="button" {...{onclick: "search_()"}}>Search</button>
   </div>
 </header>
 

@@ -57,6 +57,8 @@ function defaultFavicon(_: Request, response: Response)
 
 async function read(request: Request, response: Response) 
 {
+  response.set("Cache-Control", "max-age=604800");
+
   const path = decodeURI(request.path);
   const zipIndex = path.toLowerCase().indexOf(".zip");
 
