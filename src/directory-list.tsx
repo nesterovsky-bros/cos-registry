@@ -16,7 +16,8 @@ export async function listDirectory(request: Request, response: Response, path: 
   const accessKeySuffix = authInfo?.from === "accessKey" ?
     `?accessKey=${authInfo!.accessKey}` : ``;
 
-  const search = !!request.query.f || !!request.query.s;
+  const query = request.query.s ?? request.query.q;
+  const search = !!request.query.f || !!query;
 
   const fileMatch = (typeof request.query.f == "string" ? [request.query.f] :
     Array.isArray(request.query.f) ? request.query.f : []).
@@ -40,9 +41,9 @@ export async function listDirectory(request: Request, response: Response, path: 
       }
     }).
     filter(item => !!item);
-    
-  const contentMatch = (typeof request.query.s == "string" ? [request.query.s] :
-    Array.isArray(request.query.s) ? request.query.s : []).
+  
+  const contentMatch = (typeof query == "string" ? [query] :
+    Array.isArray(query) ? query : []).
     map(item => 
     {
       if (typeof item != "string")
@@ -277,7 +278,7 @@ ${render(tableHead())}
       <div>
         <label>
           Content regex:<br>
-          <input name="s" type="text"/>
+          <input name="q" type="text"/>
         </label>
       </div>
     </main>
