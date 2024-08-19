@@ -1,10 +1,13 @@
+import * as stream from 'stream';
+import * as readline from 'node:readline/promises';
 import { Request, Response } from "express";
 import { DirectoryItem } from "./model/directory-item.js";
-import { getZipDirectory, HeadObjectOutput, listObjects } from "./store.js";
+import { getObjectStream, getZipDirectory, HeadObjectOutput, listObjects } from "./store.js";
 import { render } from "preact-render-to-string";
 import { options } from "./options.js";
 import { matchrole } from "./authorize.js";
 import { version } from "../package.json";
+import { Minimatch } from "minimatch";
 
 export async function listDirectory(request: Request, response: Response, path: string, entry?: string, header?: HeadObjectOutput)
 {
@@ -13,6 +16,58 @@ export async function listDirectory(request: Request, response: Response, path: 
   const accessKeySuffix = authInfo?.from === "accessKey" ?
     `?accessKey=${authInfo!.accessKey}` : ``;
 
+  const search = !!request.query.f || !!request.query.s;
+
+  const fileMatch = (typeof request.query.f == "string" ? [request.query.f] :
+    Array.isArray(request.query.f) ? request.query.f : []).
+    flatMap(item => typeof item === "string" ? item.split(".") : []).
+    map(item => 
+    {
+      const pattern = item?.trim();
+
+      if (!pattern)
+      {
+        return null;
+      }
+
+      try
+      {
+        return new Minimatch(pattern);
+      }
+      catch
+      {
+        return null;
+      }
+    }).
+    filter(item => !!item);
+    
+  const contentMatch = (typeof request.query.s == "string" ? [request.query.s] :
+    Array.isArray(request.query.s) ? request.query.s : []).
+    map(item => 
+    {
+      if (typeof item != "string")
+      {
+        return null;
+      }
+
+      const pattern = item.trim();
+
+      if (!pattern)
+      {
+        return null;
+      }
+
+      try
+      {
+        return new RegExp(item, "i");
+      }
+      catch
+      {
+        return null;
+      }
+    }).
+    filter(item => !!item);
+        
   response.type("html");
 
   response.write(
@@ -35,15 +90,124 @@ ${render(tableHead())}
     response.write(render(row({ name: "api/", selecable: false })));
   }
 
-  if (entry)
+  if (search)
+  {
+    if (fileMatch.length || contentMatch.length)
+    {
+      const batch: Promise<void>[] = [];
+
+      for await(let item of list(path.substring(1), entry))
+      {
+        if (contentMatch.length && item.stream)
+        {
+          batch.push(step(item));
+
+          if (batch.length >= 1000)
+          {
+            await Promise.all(batch);
+            batch.length = 0;
+          }
+        }
+      }
+
+      if (batch.length)
+      {
+        await Promise.all(batch);
+      }
+    }
+
+    async function step(item: DirectoryItem)
+    {
+      const reader = readline.createInterface(item.stream!);
+
+      try
+      {
+        for await(const line of reader) 
+        {
+          if (contentMatch.some(match => match.test(line)))
+          {
+            response.write(render(row({...item, name: item.name.substring(path.length)})));
+
+            break;
+          }
+        }
+      }
+      finally
+      {
+        reader.close();
+      }
+    }
+
+    async function* list(path: string, entry?: string): AsyncGenerator<DirectoryItem>
+    {
+      if (entry)
+      {
+        const directory = await getZipDirectory(path, header);
+        const prefix = entry.substring(1);
+
+        for(let file of directory.files.sort((f, s) => f.path.localeCompare(s.path)))
+        {
+          if (file.type === "File" && 
+            (!prefix || file.path?.startsWith(prefix)))
+          {
+            const filepath = `${path}/${file.path}`;
+
+            if (fileMatch.length && !fileMatch.some(item => item.match(filepath)))
+            {
+              continue;
+            }
+
+            const item: DirectoryItem = 
+            { 
+              name: filepath, 
+              stream: contentMatch.length ? file.stream() : null, 
+              lastModified: file.lastModifiedDateTime,
+              size: file.uncompressedSize
+            };
+
+            yield item;
+          }
+        }
+      }
+      else
+      {
+        for await(let item of listObjects(path, authInfo))
+        {
+          if (item.name && item.file)
+          {
+            const filepath = `${path}${item.name}`;
+
+            if (fileMatch.length && !fileMatch.some(item => item.match(filepath)))
+            {
+              continue;
+            }
+
+            if (filepath.toLowerCase().endsWith(".zip"))
+            {
+              for await(let item of list(filepath, "/"))
+              {
+                yield item;
+              }
+            }
+            else
+            {
+              yield { ...item, name: filepath, stream: contentMatch.length ? getObjectStream(filepath) : null };
+            }
+          }
+        }
+      }
+    }
+  }
+  else if (entry)
   {
     const prefix = entry.substring(1);
     const directory = await getZipDirectory(path.substring(1), header);
     const folders: { [path: string]: boolean } = {};
 
-    for(let file of directory.files)
+    for(let file of directory.files.sort((f, s) => f.path.localeCompare(s.path)))
     {
-      if (file.type === "File" && (!prefix || file.path?.startsWith(prefix)))
+      if (file.type === "File" && 
+        (!prefix || file.path?.startsWith(prefix)))
       {
         let name = file.path.substring(prefix.length);
         const p = name.indexOf("/");
@@ -218,6 +382,7 @@ dialog>form
 dialog>form input[type=text]
 {
   margin: 3px 0 7px 2em;
+  width: 25em;
 }
 
 .dialog-footer
@@ -400,7 +565,7 @@ function init()
     <><a href={`${'../'.repeat(parts.length - index - 1)}${accessKeySuffix}`}>{part}/</a> </>)}
   </h1>
   <div class="toolbar">
-    <button name="downloadFile" type="button" {...{onclick: "download()"}}>Download</button>
+    <button name="downloadFile" type="button" {...{onclick: "download()"}} disabled={search || !!entry}>Download</button>
     <button name="uploadFiles" type="button" {...{onclick: "upload()"}} disabled>Upload</button>
     <button name="uploadFolder" type="button" {...{onclick: "upload(true)"}} disabled>Upload folder</button>
     <button name="copy" type="button" {...{onclick: "copy_()"}} disabled>Copy</button>
