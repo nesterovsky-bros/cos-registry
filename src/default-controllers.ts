@@ -93,15 +93,7 @@ async function read(request: Request, response: Response)
           }
           else
           {
-            if (!contentType(path, response))
-            {
-              const p = path.lastIndexOf(".");
-
-              if (p >= 0)
-              {
-                response.type(path.substring(p));
-              }
-            }
+            contentType(path, response);
 
             file.stream().
               on("error", error => servererror(request, response, error)).
@@ -132,18 +124,34 @@ function contentType(path: string, response: Response)
 {
   path = path.toLowerCase();
 
-  if (path.endsWith(".pom") || path.endsWith(".nuspec"))
+  const p = path.lastIndexOf(".");
+
+  if (p >= 0)
   {
-    response.contentType("text/xml");
+    const extension = path.substring(p);
 
-    return true;
-  }
+    switch(extension)
+    {
+      case ".pom":
+      case ".nuspec":
+      {
+        response.contentType("text/xml");
+    
+        return true;
+      }
+      case ".md":
+      {
+        response.contentType("text/html");
+    
+        return true;
+      }
+      default:
+      {
+        response.type(extension);
 
-  if (path.endsWith(".md"))
-  {
-    response.contentType("text/html");
-
-    return true;
+        return true;
+      }
+    }
   }
 
   return false;
