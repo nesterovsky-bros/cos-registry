@@ -145,6 +145,14 @@ function contentType(path: string, response: Response)
     
         return true;
       }
+      case ".ab":
+      case ".cob":
+      case ".cpy":
+      {
+        response.type(".txt");
+    
+        return true;
+      }
       default:
       {
         response.type(extension);
