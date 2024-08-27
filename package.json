@@ -1,6 +1,6 @@
 {
   "name": "cos-registry",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Registry backed by IBM Cloud Object Storage",
   "main": "index.ts",
   "type": "module",
