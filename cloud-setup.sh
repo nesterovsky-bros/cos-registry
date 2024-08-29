@@ -19,6 +19,7 @@ usage() {
   echo "  --app-repo-url <repo-url>                 Application repository URL (default: https://github.com/nesterovsky-bros/cos-registry.git)"
   echo "  --app-repo-branch <repo-branch>           Application repository branch (default: main)"
   echo "  --api-key <api-key>                       IBM Cloud API key (optional, can also be set via IBM_CLOUD_API_KEY environment variable)"
+  echo "  --image <image>                           Container image to use for the application (optional)"
   echo "  --help                                    Display this help message"
   exit 1
 }
@@ -37,6 +38,7 @@ while [[ "$#" -gt 0 ]]; do
     --app-repo-url) APP_REPO_URL="$2"; shift ;;
     --app-repo-branch) APP_REPO_BRANCH="$2"; shift ;;
     --api-key) IBM_CLOUD_API_KEY="$2"; shift ;;
+    --image) IMAGE="$2"; shift ;;
     --help) usage ;;
     *) echo "Unknown parameter passed: $1"; usage ;;
   esac
@@ -105,7 +107,11 @@ ibmcloud ce project select --name "$CODE_ENGINE_PROJECT_NAME" || { echo "Failed 
 echo "Checking if application already exists..."
 if ibmcloud ce application get --name "$APP_NAME" --quiet 2>/dev/null; then
   echo "Application already exists. Rebuilding and redeploying..."
-  ibmcloud ce application update --name "$APP_NAME" --source "$APP_REPO_URL" --commit "$APP_REPO_BRANCH" --scale-down-delay 120 --no-wait || { echo "Failed to update application"; exit 1; }
+  if [[ -n "$IMAGE" ]]; then
+    ibmcloud ce application update --name "$APP_NAME" --image "$IMAGE" --source "$APP_REPO_URL" --commit "$APP_REPO_BRANCH" --scale-down-delay 120 --no-wait || { echo "Failed to update application"; exit 1; }
+  else
+    ibmcloud ce application update --name "$APP_NAME" --source "$APP_REPO_URL" --commit "$APP_REPO_BRANCH" --scale-down-delay 120 --no-wait || { echo "Failed to update application"; exit 1; }
+  fi
   exit 0
 fi
 
@@ -154,7 +160,7 @@ fi
 # Assign write access to the Cloud Object Storage instance
 echo "Assigning write access to Cloud Object Storage instance..."
 if ! ibmcloud iam service-policies "$APP_USER_SERVICE_ID" --output json | jq -e '.[] | select(.resources[].attributes[].value == "'$COS_INSTANCE_GUID'") | select(.roles[].display_name == "Writer")' > /dev/null; then
-  ibmcloud iam service-policy-create "$APP_USER_SERVICE_ID" --roles Writer --service-instance "$COS_INSTANCE_GUID" --force || { echo "Failed to assign write access to Cloud Object Storage instance"; exit 1; }
+  ibmcloud iam service-policy-create "$APP_USER_SERVICE_ID" --roles Writer --service-instance "$COS_INSTANCE_GUID" --service-name cloud-object-storage --force || { echo "Failed to assign write access to Cloud Object Storage instance"; exit 1; }
 fi
 
 # Assign IAM Identity keys inspection to the Service ID
@@ -177,7 +183,11 @@ ibmcloud ce secret create --name "${APP_NAME}-config" --from-literal=CLOUD_OBJEC
 
 # Create an application within the Code Engine project
 echo "Creating application..."
-ibmcloud ce application create --name "$APP_NAME" --source "$APP_REPO_URL" --commit "$APP_REPO_BRANCH" --build-strategy buildpacks --env-from-secret "${APP_NAME}-config" --scale-down-delay 120 --no-wait || { echo "Failed to create application"; exit 1; }
+if [[ -n "$IMAGE" ]]; then
+  ibmcloud ce application create --name "$APP_NAME" --image "$IMAGE" --source "$APP_REPO_URL" --commit "$APP_REPO_BRANCH" --build-strategy buildpacks --env-from-secret "${APP_NAME}-config" --scale-down-delay 120 --no-wait || { echo "Failed to create application"; exit 1; }
+else
+  ibmcloud ce application create --name "$APP_NAME" --source "$APP_REPO_URL" --commit "$APP_REPO_BRANCH" --build-strategy buildpacks --env-from-secret "${APP_NAME}-config" --scale-down-delay 120 --no-wait || { echo "Failed to create application"; exit 1; }
+fi
 
 echo "Setup complete. Your application is now running."
 echo "App User Service ID: $APP_USER_SERVICE_ID_NAME ($APP_USER_SERVICE_ID)"

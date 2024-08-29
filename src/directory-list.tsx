@@ -1,4 +1,3 @@
-import * as stream from 'stream';
 import * as readline from 'node:readline/promises';
 import { Request, Response } from "express";
 import { DirectoryItem } from "./model/directory-item.js";
@@ -97,17 +96,24 @@ ${render(tableHead())}
     {
       const batch: Promise<void>[] = [];
 
-      for await(let item of list(path.substring(1), entry))
+      for await(let item of list(path, entry))
       {
-        if (contentMatch.length && item.stream)
+        if (contentMatch.length)
         {
-          batch.push(step(item));
-
-          if (batch.length >= 1000)
+          if (item.stream)
           {
-            await Promise.all(batch);
-            batch.length = 0;
+            batch.push(step(item));
+  
+            if (batch.length >= 1000)
+            {
+              await Promise.all(batch);
+              batch.length = 0;
+            }
           }
+        }
+        else
+        {
+          response.write(render(row({...item, name: item.name.substring(path.length)})));
         }
       }
 
@@ -143,7 +149,7 @@ ${render(tableHead())}
     {
       if (entry)
       {
-        const directory = await getZipDirectory(path, header);
+        const directory = await getZipDirectory(path.substring(1), header);
         const prefix = entry.substring(1);
 
         for(let file of directory.files.sort((f, s) => f.path.localeCompare(s.path)))
@@ -163,7 +169,8 @@ ${render(tableHead())}
               name: filepath, 
               stream: contentMatch.length ? file.stream() : null, 
               lastModified: file.lastModifiedDateTime,
-              size: file.uncompressedSize
+              size: file.uncompressedSize,
+              selecable: false
             };
 
             yield item;
@@ -172,7 +179,7 @@ ${render(tableHead())}
       }
       else
       {
-        for await(let item of listObjects(path, authInfo))
+        for await(let item of listObjects(path.substring(1), authInfo, true))
         {
           if (item.name && item.file)
           {
@@ -192,7 +199,7 @@ ${render(tableHead())}
             }
             else
             {
-              yield { ...item, name: filepath, stream: contentMatch.length ? getObjectStream(filepath) : null };
+              yield { ...item, name: filepath, stream: contentMatch.length ? getObjectStream(filepath.substring(1)) : null };
             }
           }
         }
@@ -222,7 +229,7 @@ ${render(tableHead())}
           {
             folders[name] = true;
 
-            response.write(render(row({ name, file: false})));
+            response.write(render(row({ name, file: false, selecable: false})));
           }
         }
       }
@@ -242,7 +249,8 @@ ${render(tableHead())}
             name: file.path.substring(prefix.length),
             file: true,
             size: file.uncompressedSize,
-            lastModified: file.lastModifiedDateTime
+            lastModified: file.lastModifiedDateTime,
+            selecable: false
           })));
         }
       }
@@ -283,8 +291,8 @@ ${render(tableHead())}
       </div>
     </main>
     <div class="dialog-footer">
-      <button value="cancel" formmethod="dialog">Cancel</button>
       <button value="default" type="submit">Search</button>
+      <button value="cancel" type="button" onclick="searchDialog.close()">Cancel</button>
     </div>
   </form>
 </dialog>
@@ -364,6 +372,7 @@ dialog
 {
   padding: 0;
   border: 0;
+  box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
 }
 
 dialog h4
@@ -414,6 +423,7 @@ dialog>form input[type=text]
     const script = `
 const writer = ${matchrole(authInfo, "writer") && !entry};
 const form = document.getElementById("main");
+const searchDialog = document.getElementById("searchDialog");
 
 function updateSelections()
 {
@@ -530,13 +540,6 @@ function onFilesChange()
   history.replaceState(null, "", location.url);
 }
 
-function search_()
-{
-  const dialog = document.getElementById("searchDialog");
-
-  dialog.showModal();
-}
-
 function init()
 {
   if ("webkitdirectory" in form.files)
@@ -571,7 +574,7 @@ function init()
     <button name="uploadFolder" type="button" {...{onclick: "upload(true)"}} disabled>Upload folder</button>
     <button name="copy" type="button" {...{onclick: "copy_()"}} disabled>Copy</button>
     <button name="delete" type="button" {...{onclick: "delete_()"}} disabled>Delete</button>
-    <button name="search" type="button" {...{onclick: "search_()"}}>Search</button>
+    <button name="search" type="button" {...{onclick: "searchDialog.showModal()"}}>Search</button>
   </div>
 </header>
 

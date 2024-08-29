@@ -112,7 +112,14 @@ async function read(request: Request, response: Response)
 
   if (path.endsWith("/"))
   {
-    listDirectory(request, response, path);
+    try
+    {
+      await listDirectory(request, response, path);
+    }
+    catch(error)
+    {
+      servererror(request, response, error as Error);
+    }
   }
   else
   {
