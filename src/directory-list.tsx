@@ -1,26 +1,38 @@
 import * as readline from 'node:readline/promises';
 import { Request, Response } from "express";
+import { Minimatch } from "minimatch";
+import { version } from "../package.json";
 import { DirectoryItem } from "./model/directory-item.js";
-import { getObjectStream, getZipDirectory, HeadObjectOutput, listObjects } from "./store.js";
+import { getZipDirectory, HeadObjectOutput, listDirectoryItems, listObjects } from "./store.js";
 import { render } from "preact-render-to-string";
 import { options } from "./options.js";
 import { matchrole } from "./authorize.js";
-import { version } from "../package.json";
-import { Minimatch } from "minimatch";
 
-export async function listDirectory(request: Request, response: Response, path: string, entry?: string, header?: HeadObjectOutput)
+export interface ListOptions
 {
+  path: string;
+  entry?: string;
+  header?: HeadObjectOutput;
+  alert?: string;
+  search?: boolean;
+}
+
+export async function listDirectory(request: Request, response: Response, listOptions: ListOptions)
+{
+  const {path, entry, header, alert } = listOptions;
+
+  let flushTime: number|null = null; 
   const authInfo = request.authInfo;
-  const fullpath = entry ? path + entry : path;
+  const fullpath = listOptions.entry ? path + entry : path;
   const accessKeySuffix = authInfo?.from === "accessKey" ?
     `?accessKey=${authInfo!.accessKey}` : ``;
 
   const query = request.query.s ?? request.query.q;
-  const search = !!request.query.f || !!query;
+  const search = listOptions.search !== false && !!request.query.f || !!query;
 
   const fileMatch = (typeof request.query.f == "string" ? [request.query.f] :
     Array.isArray(request.query.f) ? request.query.f : []).
-    flatMap(item => typeof item === "string" ? item.split(".") : []).
+    flatMap(item => typeof item === "string" ? item.split(/[;,]/) : []).
     map(item => 
     {
       const pattern = item?.trim();
@@ -28,7 +40,7 @@ export async function listDirectory(request: Request, response: Response, path: 
       if (!pattern)
       {
         return null;
-      }
+      }``
 
       try
       {
@@ -86,8 +98,8 @@ ${render(tableHead())}
 
   if (path === "/")
   {
-    response.write(render(row({ name: "README", selecable: false })));
-    response.write(render(row({ name: "api/", selecable: false })));
+    write({ name: "README", selecable: false });
+    write({ name: "api/", selecable: false });
   }
 
   if (search)
@@ -100,20 +112,17 @@ ${render(tableHead())}
       {
         if (contentMatch.length)
         {
-          if (item.stream)
+          batch.push(step(item));
+
+          if (batch.length >= 1000)
           {
-            batch.push(step(item));
-  
-            if (batch.length >= 1000)
-            {
-              await Promise.all(batch);
-              batch.length = 0;
-            }
+            await Promise.all(batch);
+            batch.length = 0;
           }
         }
         else
         {
-          response.write(render(row({...item, name: item.name.substring(path.length)})));
+          write({...item, name: item.name.substring(path.length)});
         }
       }
 
@@ -125,7 +134,7 @@ ${render(tableHead())}
 
     async function step(item: DirectoryItem)
     {
-      const reader = readline.createInterface(item.stream!);
+      const reader = readline.createInterface(item.stream!());
 
       try
       {
@@ -133,7 +142,7 @@ ${render(tableHead())}
         {
           if (contentMatch.some(match => match.test(line)))
           {
-            response.write(render(row({...item, name: item.name.substring(path.length)})));
+            write({...item, name: item.name.substring(path.length)});
 
             break;
           }
@@ -147,61 +156,15 @@ ${render(tableHead())}
 
     async function* list(path: string, entry?: string): AsyncGenerator<DirectoryItem>
     {
-      if (entry)
+      for await(let item of listDirectoryItems(path, entry, authInfo, header))
       {
-        const directory = await getZipDirectory(path.substring(1), header);
-        const prefix = entry.substring(1);
+        flush();
 
-        for(let file of directory.files.sort((f, s) => f.path.localeCompare(s.path)))
+        const filepath = `${path}/${item.name}`;
+
+        if (!fileMatch.length || fileMatch.some(item => item.match(filepath)))
         {
-          if (file.type === "File" && 
-            (!prefix || file.path?.startsWith(prefix)))
-          {
-            const filepath = `${path}/${file.path}`;
-
-            if (fileMatch.length && !fileMatch.some(item => item.match(filepath)))
-            {
-              continue;
-            }
-
-            const item: DirectoryItem = 
-            { 
-              name: filepath, 
-              stream: contentMatch.length ? file.stream() : null, 
-              lastModified: file.lastModifiedDateTime,
-              size: file.uncompressedSize,
-              selecable: false
-            };
-
-            yield item;
-          }
-        }
-      }
-      else
-      {
-        for await(let item of listObjects(path.substring(1), authInfo, true))
-        {
-          if (item.name && item.file)
-          {
-            const filepath = `${path}${item.name}`;
-
-            if (fileMatch.length && !fileMatch.some(item => item.match(filepath)))
-            {
-              continue;
-            }
-
-            if (filepath.toLowerCase().endsWith(".zip"))
-            {
-              for await(let item of list(filepath, "/"))
-              {
-                yield item;
-              }
-            }
-            else
-            {
-              yield { ...item, name: filepath, stream: contentMatch.length ? getObjectStream(filepath.substring(1)) : null };
-            }
-          }
+          yield item;
         }
       }
     }
@@ -214,6 +177,8 @@ ${render(tableHead())}
 
     for(let file of directory.files.sort((f, s) => f.path.localeCompare(s.path)))
     {
+      flush();
+
       if (file.type === "File" && 
         (!prefix || file.path?.startsWith(prefix)))
       {
@@ -222,14 +187,12 @@ ${render(tableHead())}
 
         if (p >= 0)
         {
-
           name = name.substring(0, p + 1);
 
           if (!folders[name])
           {
             folders[name] = true;
-
-            response.write(render(row({ name, file: false, selecable: false})));
+            write({ name, file: false });
           }
         }
       }
@@ -237,6 +200,8 @@ ${render(tableHead())}
 
     for(let file of directory.files)
     {
+      flush();
+
       if (file.type === "File" && 
         (!prefix || file.path?.startsWith(prefix)))
       {
@@ -244,14 +209,14 @@ ${render(tableHead())}
 
         if (name.indexOf("/") === -1)
         {
-          response.write(render(row(
+          write(
           {
             name: file.path.substring(prefix.length),
             file: true,
             size: file.uncompressedSize,
             lastModified: file.lastModifiedDateTime,
             selecable: false
-          })));
+          });
         }
       }
     }
@@ -260,9 +225,11 @@ ${render(tableHead())}
   {
     for await(let item of listObjects(path.substring(1), authInfo))
     {
+      flush();
+
       if (item.name)
       {
-        response.write(render(row(item)));
+        write(item);
       }
     }
   }
@@ -296,10 +263,24 @@ ${render(tableHead())}
     </div>
   </form>
 </dialog>
-${render(script())}
 </body></html>`);
 
   response.end();
+
+  function write(item: DirectoryItem)
+  {
+    response.write(render(row(item)));
+    flushTime = Date.now() + 1000;
+  }
+
+  function flush()
+  {
+    if (flushTime != null && flushTime < Date.now())
+    {
+      flushTime = null;
+      response.flush();
+    }
+  }
 
   function head()
   {
@@ -408,12 +389,14 @@ dialog>form input[type=text]
 }
 `;
 
-    const element = 
+    const element = <>
 <head>
   <base href={fullpath}/>
   <title>Index of {fullpath}</title>
   <style dangerouslySetInnerHTML={{ __html:style }}></style>
-</head>;
+</head>
+{script()}
+  </>;
 
     return element;
   }
@@ -422,8 +405,8 @@ dialog>form input[type=text]
   {
     const script = `
 const writer = ${matchrole(authInfo, "writer") && !entry};
-const form = document.getElementById("main");
-const searchDialog = document.getElementById("searchDialog");
+let form;
+let searchDialog;
 
 function updateSelections()
 {
@@ -490,7 +473,7 @@ function copy_()
 
   let target = prompt(
     "Enter target name", 
-    "${fullpath}" + (selection.length > 1 ? "Folder/": "Copy of " + selection[0]));
+    ${JSON.stringify(fullpath)} + (selection.length > 1 ? "Folder/": "Copy of " + selection[0]));
 
   target = target?.trim();
 
@@ -542,6 +525,9 @@ function onFilesChange()
 
 function init()
 {
+  form = document.getElementById("main");
+  searchDialog = document.getElementById("searchDialog");
+
   if ("webkitdirectory" in form.files)
   {
     form.uploadFolder.disabled = !writer;
@@ -552,8 +538,11 @@ function init()
   }
 
   form.uploadFiles.disabled = !writer;
+  form.downloadFile.disabled = false;
 
   updateSelection();
+
+  ${alert && `alert(${JSON.stringify(alert)});`}
 }
 `;        
 
@@ -569,7 +558,7 @@ function init()
     <><a href={`${'../'.repeat(parts.length - index - 1)}${accessKeySuffix}`}>{part}/</a> </>)}
   </h1>
   <div class="toolbar">
-    <button name="downloadFile" type="button" {...{onclick: "download()"}} disabled={search || !!entry}>Download</button>
+    <button name="downloadFile" type="button" {...{onclick: "download()"}} disabled>Download</button>
     <button name="uploadFiles" type="button" {...{onclick: "upload()"}} disabled>Upload</button>
     <button name="uploadFolder" type="button" {...{onclick: "upload(true)"}} disabled>Upload folder</button>
     <button name="copy" type="button" {...{onclick: "copy_()"}} disabled>Copy</button>

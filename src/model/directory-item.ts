@@ -8,5 +8,5 @@ export interface DirectoryItem
   lastModified?: Date;
   selecable?: boolean;
   href?: string;
-  stream?: stream.Readable|null;
+  stream?: () => stream.Readable;
 }

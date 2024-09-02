@@ -1,10 +1,11 @@
 import fs from "fs";
-import zlib from "node:zlib";
 import tar from "tar-stream";
+import zlib from "node:zlib";
+import { File } from "unzipper";
 import { Express, NextFunction, Request, Response } from "express";
-import { authenticate, authorize, forbidden, matchrole, notfound, servererror, validpath } from "./authorize.js";
-import { copy, copyOne, deleteObjects, getObjectHeader, getObjectStream, getZipDirectory, listObjects, setObjectStream } from "./store.js";
 import multer from "multer";
+import { authenticate, authorize, forbidden, matchrole, notfound, servererror, validpath } from "./authorize.js";
+import { copy, deleteObjects, getObjectHeader, getObjectStream, getZipDirectory, listObjects, setObjectStream } from "./store.js";
 import { listDirectory } from "./directory-list.js";
 import { options } from "./options.js";
 
@@ -14,7 +15,7 @@ export function defaultControllers(app: Express)
 {
   app.get("/README", readme);
   app.get("/favicon.ico", authenticate, favicon);
-  app.get("*", authorize("reader"), read);
+  app.get("*", authorize("reader"), (request, response) => read(request, response));
   app.put("*", authorize("writer"), put);  
   app.delete("*", authorize("writer"), delete_);  
   app.post("*", authorize("reader"), upload.any(), post);
@@ -55,10 +56,8 @@ function defaultFavicon(_: Request, response: Response)
   response.sendFile("favicon.svg", { root: import.meta.dirname });
 }
 
-async function read(request: Request, response: Response) 
+async function read(request: Request, response: Response, search?: boolean) 
 {
-  response.set("Cache-Control", "max-age=60");
-
   const path = decodeURI(request.path);
   const zipIndex = path.toLowerCase().indexOf(".zip");
 
@@ -75,11 +74,22 @@ async function read(request: Request, response: Response)
       {
         if (!entry)
         {
-          listDirectory(request, response, zip, "/", header);
+          listDirectory(request, response, 
+          {
+            path: zip, 
+            entry: "/", 
+            header,
+            search
+          });
         }
         else if (entry.endsWith("/"))
         {
-          listDirectory(request, response, zip, entry);
+          listDirectory(request, response, 
+          {
+            path: zip, 
+            entry,
+            search
+          });
         }
         else
         {
@@ -114,7 +124,7 @@ async function read(request: Request, response: Response)
   {
     try
     {
-      await listDirectory(request, response, path);
+      await listDirectory(request, response, { path, search });
     }
     catch(error)
     {
@@ -123,6 +133,7 @@ async function read(request: Request, response: Response)
   }
   else
   {
+    response.set("Cache-Control", "max-age=60");
     streamObject(path.substring(1), request, response);
   }
 }
@@ -252,17 +263,81 @@ async function post(request: Request, response: Response, next: NextFunction)
 
     async function* list() 
     {
-      for(let name of paths.length ? paths : [""])
+      let zip: string|null = null;
+      let directory: { [name: string]: File }|null = null;
+
+      for(let name of paths.length ? paths.sort() : [""])
       {
-        const fullpath = (path + name).substring(1);
+        const fullpath = path + name;
+        const zipIndex = fullpath.toLowerCase().indexOf(".zip");
 
-        for await(let item of listObjects(fullpath, request.authInfo, true))
+        if (zipIndex >= 0 && zipIndex + 4 < fullpath.length)
         {
-          const itempath = fullpath + item.name;
+          const zipPath = fullpath.substring(0, zipIndex + 4);
+          const entry = fullpath.substring(zipIndex + 4);
 
-          if (item.file && validpath(itempath))
+          if (zipPath != zip)
           {
-            yield { path: itempath, size: item.size! };
+            try
+            {
+              const header = await getObjectHeader(zipPath.substring(1));
+        
+              if (header?.DeleteMarker !== false)
+              {
+                zip = zipPath;
+                
+                directory = (await getZipDirectory(zip.substring(1), header)).files.reduce((result, file) =>
+                {
+                  result[file.path] = file;
+
+                  return result;
+                }, {} as { [name: string]: File });
+              }
+            }
+            catch(e)
+            {
+              // No object found. Continue regular.
+              zip = null;
+              directory = null;
+            }
+          }
+
+          if (directory != null)
+          {
+            const file = directory[entry.substring(1)]
+
+            if (file?.type === "File")
+            {
+              const item = 
+              { 
+                path: `${zip}/${file.path}`, 
+                entry: true, 
+                size: file.uncompressedSize, 
+                stream: () => file.stream() 
+              };
+
+              yield item;
+            }
+
+            continue;
+          }
+        }
+      
+        for await(let object of listObjects(fullpath.substring(1), request.authInfo, true))
+        {
+          const itempath = fullpath + object.name;
+
+          if (object.file && validpath(itempath))
+          {
+            const item = 
+            { 
+              path: itempath, 
+              entry: false,
+              size: object.size!, 
+              stream: () => getObjectStream(itempath.substring(1)) 
+            };
+
+            yield item;
           }
         }
       }
@@ -284,7 +359,7 @@ async function post(request: Request, response: Response, next: NextFunction)
 
         for await(let item of list())
         {
-          fullpaths.push(item.path);  
+          fullpaths.push(item.path.substring(1));  
           
           if (fullpaths.length >= size)
           {
@@ -298,7 +373,7 @@ async function post(request: Request, response: Response, next: NextFunction)
           await deleteObjects(fullpaths);
         }
 
-        read(request, response);
+        read(request, response, false);
   
         return;
       }
@@ -324,7 +399,7 @@ async function post(request: Request, response: Response, next: NextFunction)
           }
         }
       
-        read(request, response);
+        read(request, response, false);
   
         return;
       }
@@ -343,12 +418,12 @@ async function post(request: Request, response: Response, next: NextFunction)
 
         for await(let item of list())
         {
-          getObjectStream(item.path).
+          item.stream().
             on("error", error => response.status(500).send(error.message)).
             pipe(
               pack.entry(
               {
-                name: item.path.substring(path.length - 1),
+                name: item.path.substring(path.length),
                 size: item.size
               }));
         }
@@ -363,16 +438,37 @@ async function post(request: Request, response: Response, next: NextFunction)
 
         if (target?.startsWith("/") && paths.length)
         {
+          const batch: Promise<void>[] = [];
+
           try
           {
-            await Promise.all(paths.map(async name => 
+            for await(let item of list())
             {
-              const from = (path + name).substring(1);
-              const to = (paths.length > 1 && target.endsWith("/") ? target + name : target).substring(1);
+              const to = target.endsWith("/") ? target + item.path.substring(path.length) :
+                item.path === path ? target : target + "/" + item.path.substring(path.length);
 
-              await (to.endsWith("/") ? copy(from, to, authInfo) : copyOne(from, to, authInfo));
-            }));
+              if (item.entry)
+              {
+                batch.push(setObjectStream(to.substring(1), item.stream()));
+              }
+              else
+              {
+                const from = item.path.substring(1);
+  
+                batch.push(copy(from, to.substring(1), authInfo));
+              }
 
+              if (batch.length >= 100)
+              {
+                await Promise.all(batch);
+                batch.length = 0;
+              }
+            }
+
+            if (batch.length)
+            {
+              await Promise.all(batch);
+            }
           }
           catch(error)
           {
@@ -382,7 +478,7 @@ async function post(request: Request, response: Response, next: NextFunction)
           }
         }
 
-        read(request, response);
+        read(request, response, false);
   
         return;
       }

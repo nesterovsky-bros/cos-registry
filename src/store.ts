@@ -68,6 +68,51 @@ export function getZipDirectory(path: string, header?: HeadObjectOutput): Promis
   return (unzipper.Open as any).custom(source, options);
 }
 
+export async function* listDirectoryItems(path: string, entry?: string, authInfo?: AuthInfo, header?: HeadObjectOutput): AsyncGenerator<DirectoryItem>
+{
+  if (entry)
+  {
+    const directory = await getZipDirectory(path.substring(1), header);
+    const prefix = entry.substring(1);
+
+    for(let file of directory.files.sort((f, s) => f.path.localeCompare(s.path)))
+    {
+      if (file.type === "File" && (!prefix || file.path?.startsWith(prefix)))
+      {
+        const item: DirectoryItem = 
+        { 
+          name: `${path}/${file.path}`, 
+          stream: () => file.stream(), 
+          lastModified: file.lastModifiedDateTime,
+          size: file.uncompressedSize,
+        };
+
+        yield item;
+      }
+    }
+  }
+  else
+  {
+    for await(let item of listObjects(path.substring(1), authInfo, true))
+    {
+      if (item.name && item.file)
+      {
+        const filepath = `${path}${item.name}`;
+
+        yield { ...item, name: filepath, stream: () => getObjectStream(filepath.substring(1)) };
+
+        if (filepath.toLowerCase().endsWith(".zip"))
+        {
+          for await(let item of listDirectoryItems(filepath, "/"))
+          {
+            yield item;
+          }
+        }
+      }
+    }
+  }
+}
+
 export function getObjectStream(path: string): stream.Readable
 {
   return getObject(path).createReadStream();
@@ -159,50 +204,11 @@ export async function deleteObjects(paths: string[])
   }
 }
 
-export async function copy(source: string, target: string, authInfo?: AuthInfo): Promise<boolean>
+export async function copy(source: string, target: string, authInfo?: AuthInfo): Promise<void>
 {
   if (authInfo?.match?.(target) === false)
   {
-    return false;
-  }
-
-  let copied = false;
-  const batch: Promise<any>[] = [];
-
-  for await(let item of listObjects(source, authInfo, true))
-  {
-    if (item.file && authInfo?.match?.(target) !== false)
-    {
-      batch.push(s3.copyObject(
-      { 
-        CopySource: `${options.bucket}/${source + item.name}`,
-        Bucket: options.bucket,  
-        Key: target + item.name
-      }).promise());
-
-      if (batch.length >= 100)
-      {
-        await Promise.all(batch);
-        batch.length = 0;
-      }
-
-      copied = true;
-    }
-  }
-
-  if (batch.length)
-  {
-    await Promise.all(batch);
-  }
-
-  return copied;
-}
-
-export async function copyOne(source: string, target: string, authInfo?: AuthInfo): Promise<boolean>
-{
-  if (authInfo?.match?.(target) === false)
-  {
-    return false;
+    return;
   }
 
   await s3.copyObject(
@@ -211,6 +217,4 @@ export async function copyOne(source: string, target: string, authInfo?: AuthInf
     Bucket: options.bucket,  
     Key: target
   }).promise();
-
-  return true;
 }
