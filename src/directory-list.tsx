@@ -1,7 +1,7 @@
 import * as readline from 'node:readline/promises';
 import { Request, Response } from "express";
 import { Minimatch } from "minimatch";
-import { version } from "../package.json";
+import packageJson from "../package.json";
 import { DirectoryItem } from "./model/directory-item.js";
 import { getZipDirectory, HeadObjectOutput, listDirectoryItems, listObjects } from "./store.js";
 import { render } from "preact-render-to-string";
@@ -238,7 +238,7 @@ ${render(tableHead())}
 `</tbody>
 </table>
 <hr>
-<div class="copyright">©2024 A&V. <a href="${options.github}?tab=MIT-1-ov-file#readme">MIT License</a>. Version ${version}</div>
+<div class="copyright">©2024-2025 A&V. <a href="${options.github}?tab=MIT-1-ov-file#readme">MIT License</a>. Version ${packageJson.version}</div>
 </form>
 <dialog id="searchDialog">
   <h4>Search content</h4>
