@@ -7,6 +7,8 @@ import { options } from "./options.js";
 
 const app = express();
 
+app.set('trust proxy', true);
+
 app.use(compression());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());

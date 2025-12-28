@@ -1,8 +1,21 @@
 import { Express } from "express";
-import { options } from "./options.js";
+import { getRequestPath, options } from "./options.js";
 
 export function apiControllers(app: Express)
 {
-  //app.get("/api/env", authorize("owner"), (_, response) => response.json(process.env));
-  app.use("/api", (_, response) => response.json(options.api));
+  // app.get("/api/test", (request, response) =>
+  //   response.json(
+  //     {
+  //       headers: request.headers,
+  //       query: request.query,
+  //       params: request.params,
+  //       env: process.env
+  //     }));
+
+  app.use("/api", (request, response) =>
+    response.json(options.api.map(api => ({
+      name: api.name,
+      url: getRequestPath(request, api.url, false),
+      description: api.description
+    }))));
 }

@@ -5,7 +5,7 @@ import packageJson from "../package.json";
 import { DirectoryItem } from "./model/directory-item.js";
 import { getZipDirectory, HeadObjectOutput, listDirectoryItems, listObjects } from "./store.js";
 import { render } from "preact-render-to-string";
-import { options } from "./options.js";
+import { getRequestPath, options } from "./options.js";
 import { matchrole } from "./authorize.js";
 
 export interface ListOptions
@@ -19,9 +19,9 @@ export interface ListOptions
 
 export async function listDirectory(request: Request, response: Response, listOptions: ListOptions)
 {
-  const {path, entry, header, alert } = listOptions;
+  const { path, entry, header, alert } = listOptions;
 
-  let flushTime: number|null = null; 
+  let flushTime: number | null = null;
   const authInfo = request.authInfo;
   const fullpath = listOptions.entry ? path + entry : path;
   const accessKeySuffix = authInfo?.from === "accessKey" ?
@@ -40,7 +40,7 @@ export async function listDirectory(request: Request, response: Response, listOp
       if (!pattern)
       {
         return null;
-      }``
+      } ``
 
       try
       {
@@ -52,7 +52,7 @@ export async function listDirectory(request: Request, response: Response, listOp
       }
     }).
     filter(item => !!item);
-  
+
   const contentMatch = (typeof query == "string" ? [query] :
     Array.isArray(query) ? query : []).
     map(item => 
@@ -79,11 +79,11 @@ export async function listDirectory(request: Request, response: Response, listOp
       }
     }).
     filter(item => !!item);
-        
+
   response.type("html");
 
   response.write(
-`<html lang="en">
+    `<html lang="en">
 ${render(head())}
 <body onload="init()">
 <form id="main" method="POST" enctype="multipart/form-data">
@@ -108,7 +108,7 @@ ${render(tableHead())}
     {
       const batch: Promise<void>[] = [];
 
-      for await(let item of list(path, entry))
+      for await (let item of list(path, entry))
       {
         if (contentMatch.length)
         {
@@ -122,7 +122,7 @@ ${render(tableHead())}
         }
         else
         {
-          write({...item, name: item.name.substring(path.length)});
+          write({ ...item, name: item.name.substring(path.length) });
         }
       }
 
@@ -138,11 +138,11 @@ ${render(tableHead())}
 
       try
       {
-        for await(const line of reader) 
+        for await (const line of reader) 
         {
           if (contentMatch.some(match => match.test(line)))
           {
-            write({...item, name: item.name.substring(path.length)});
+            write({ ...item, name: item.name.substring(path.length) });
 
             break;
           }
@@ -156,7 +156,7 @@ ${render(tableHead())}
 
     async function* list(path: string, entry?: string): AsyncGenerator<DirectoryItem>
     {
-      for await(let item of listDirectoryItems(path, entry, authInfo, header))
+      for await (let item of listDirectoryItems(path, entry, authInfo, header))
       {
         flush();
 
@@ -175,11 +175,11 @@ ${render(tableHead())}
     const directory = await getZipDirectory(path.substring(1), header);
     const folders: { [path: string]: boolean } = {};
 
-    for(let file of directory.files.sort((f, s) => f.path.localeCompare(s.path)))
+    for (let file of directory.files.sort((f, s) => f.path.localeCompare(s.path)))
     {
       flush();
 
-      if (file.type === "File" && 
+      if (file.type === "File" &&
         (!prefix || file.path?.startsWith(prefix)))
       {
         let name = file.path.substring(prefix.length);
@@ -198,11 +198,11 @@ ${render(tableHead())}
       }
     }
 
-    for(let file of directory.files)
+    for (let file of directory.files)
     {
       flush();
 
-      if (file.type === "File" && 
+      if (file.type === "File" &&
         (!prefix || file.path?.startsWith(prefix)))
       {
         let name = file.path.substring(prefix.length);
@@ -210,20 +210,20 @@ ${render(tableHead())}
         if (name.indexOf("/") === -1)
         {
           write(
-          {
-            name: file.path.substring(prefix.length),
-            file: true,
-            size: file.uncompressedSize,
-            lastModified: file.lastModifiedDateTime,
-            selecable: false
-          });
+            {
+              name: file.path.substring(prefix.length),
+              file: true,
+              size: file.uncompressedSize,
+              lastModified: file.lastModifiedDateTime,
+              selecable: false
+            });
         }
       }
     }
   }
   else
   {
-    for await(let item of listObjects(path.substring(1), authInfo))
+    for await (let item of listObjects(path.substring(1), authInfo))
     {
       flush();
 
@@ -235,7 +235,7 @@ ${render(tableHead())}
   }
 
   response.write(
-`</tbody>
+    `</tbody>
 </table>
 <hr>
 <div class="copyright">©2024-2025 A&V. <a href="${options.github}?tab=MIT-1-ov-file#readme">MIT License</a>. Version ${packageJson.version}</div>
@@ -390,13 +390,13 @@ dialog>form input[type=text]
 `;
 
     const element = <>
-<head>
-  <base href={fullpath}/>
-  <title>Index of {fullpath}</title>
-  <style dangerouslySetInnerHTML={{ __html:style }}></style>
-</head>
-{script()}
-  </>;
+      <head>
+        <base href={getRequestPath(request, fullpath)} />
+        <title>Index of {fullpath}</title>
+        <style dangerouslySetInnerHTML={{ __html: style }}></style>
+      </head>
+      {script()}
+    </>;
 
     return element;
   }
@@ -544,62 +544,62 @@ function init()
 
   ${alert && `alert(${JSON.stringify(alert)});`}
 }
-`;        
+`;
 
-    return <script dangerouslySetInnerHTML={{ __html:script}}></script>;
+    return <script dangerouslySetInnerHTML={{ __html: script }}></script>;
   }
 
   function bodyHeader()
   {
-    const element = 
-<header id="header">
-  <h1>Index of {
-  fullpath.substring(0, fullpath.length - 1).split("/").map((part, index, parts) =>
-    <><a href={`${'../'.repeat(parts.length - index - 1)}${accessKeySuffix}`}>{part}/</a> </>)}
-  </h1>
-  <div class="toolbar">
-    <button name="downloadFile" type="button" {...{onclick: "download()"}} disabled>Download</button>
-    <button name="uploadFiles" type="button" {...{onclick: "upload()"}} disabled>Upload</button>
-    <button name="uploadFolder" type="button" {...{onclick: "upload(true)"}} disabled>Upload folder</button>
-    <button name="copy" type="button" {...{onclick: "copy_()"}} disabled>Copy</button>
-    <button name="delete" type="button" {...{onclick: "delete_()"}} disabled>Delete</button>
-    <button name="search" type="button" {...{onclick: "searchDialog.showModal()"}}>Search</button>
-  </div>
-</header>
+    const element =
+      <header id="header">
+        <h1>Index of {
+          fullpath.substring(0, fullpath.length - 1).split("/").map((part, index, parts) =>
+            <><a href={`${'../'.repeat(parts.length - index - 1)}${accessKeySuffix}`}>{part}/</a> </>)}
+        </h1>
+        <div class="toolbar">
+          <button name="downloadFile" type="button" {...{ onclick: "download()" }} disabled>Download</button>
+          <button name="uploadFiles" type="button" {...{ onclick: "upload()" }} disabled>Upload</button>
+          <button name="uploadFolder" type="button" {...{ onclick: "upload(true)" }} disabled>Upload folder</button>
+          <button name="copy" type="button" {...{ onclick: "copy_()" }} disabled>Copy</button>
+          <button name="delete" type="button" {...{ onclick: "delete_()" }} disabled>Delete</button>
+          <button name="search" type="button" {...{ onclick: "searchDialog.showModal()" }}>Search</button>
+        </div>
+      </header>
 
     return element;
   }
 
   function tableHead()
   {
-    const element = 
-<thead>
-  <tr>
-    <th><input type="checkbox" class="selections" {...{onclick: "updateSelections()"}}/></th>
-    <th>Name</th>
-    <th>Size</th>
-    <th>Last Modified</th>
-  </tr>
-</thead>;
+    const element =
+      <thead>
+        <tr>
+          <th><input type="checkbox" class="selections" {...{ onclick: "updateSelections()" }} /></th>
+          <th>Name</th>
+          <th>Size</th>
+          <th>Last Modified</th>
+        </tr>
+      </thead>;
 
     return element;
   }
 
   function row(item: DirectoryItem) 
   {
-    const element = 
-  <tr class={item.file ? "file" : "directory"}>
-    <td>
-    {
-      entry || item.selecable === false ? null :
-      <input type="checkbox" name="path" value={item.name} class="selection" {...{onclick: "updateSelection()"}}/>
-    }
-    </td>
-    <td class="name"><a href={item.href ?? item.name + accessKeySuffix}>{item.name}</a></td>
-    <td class="length">{item.size?.toLocaleString()}</td>
-    <td class="modified">{item.lastModified?.toLocaleString()}</td>
-  </tr>;
-  
+    const element =
+      <tr class={item.file ? "file" : "directory"}>
+        <td>
+          {
+            entry || item.selecable === false ? null :
+              <input type="checkbox" name="path" value={item.name} class="selection" {...{ onclick: "updateSelection()" }} />
+          }
+        </td>
+        <td class="name"><a href={item.href ?? item.name + accessKeySuffix}>{item.name}</a></td>
+        <td class="length">{item.size?.toLocaleString()}</td>
+        <td class="modified">{item.lastModified?.toLocaleString()}</td>
+      </tr>;
+
     return element;
-  } 
+  }
 }

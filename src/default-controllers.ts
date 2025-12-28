@@ -16,17 +16,19 @@ export function defaultControllers(app: Express)
   app.get("/README", readme);
   app.get("/favicon.ico", authenticate, favicon);
   app.get("*", authorize("reader"), (request, response) => read(request, response));
-  app.put("*", authorize("writer"), put);  
-  app.delete("*", authorize("writer"), delete_);  
+  app.put("*", authorize("writer"), put);
+  app.delete("*", authorize("writer"), delete_);
   app.post("*", authorize("reader"), upload.any(), post);
 
   options.api.push(
-  {
-    name: "http",
-    url: options.url,
-    description: "Http GET, PUT, DELETE and primitive UI. Also used by maven."
-  });
+    {
+      name: "http",
+      url: "/",
+      description: "Http GET, PUT, DELETE and primitive UI. Also used by maven."
+    });
 }
+
+
 
 function readme(_: Request, response: Response) 
 {
@@ -40,7 +42,7 @@ function favicon(request: Request, response: Response)
   if (matchrole(request.authInfo, "reader"))
   {
     getObjectStream(decodeURI(request.path).substring(1)).
-      on("error", error => (error as any)?.statusCode === 404 ? 
+      on("error", error => (error as any)?.statusCode === 404 ?
         defaultFavicon(request, response) :
         servererror(request, response, error)).
       pipe(response);
@@ -74,22 +76,22 @@ async function read(request: Request, response: Response, search?: boolean)
       {
         if (!entry)
         {
-          listDirectory(request, response, 
-          {
-            path: zip, 
-            entry: "/", 
-            header,
-            search
-          });
+          listDirectory(request, response,
+            {
+              path: zip,
+              entry: "/",
+              header,
+              search
+            });
         }
         else if (entry.endsWith("/"))
         {
-          listDirectory(request, response, 
-          {
-            path: zip, 
-            entry,
-            search
-          });
+          listDirectory(request, response,
+            {
+              path: zip,
+              entry,
+              search
+            });
         }
         else
         {
@@ -114,7 +116,7 @@ async function read(request: Request, response: Response, search?: boolean)
         return;
       }
     }
-    catch(e)
+    catch (e)
     {
       // No object found. Continue regular.
     }
@@ -126,7 +128,7 @@ async function read(request: Request, response: Response, search?: boolean)
     {
       await listDirectory(request, response, { path, search });
     }
-    catch(error)
+    catch (error)
     {
       servererror(request, response, error as Error);
     }
@@ -148,35 +150,35 @@ function contentType(path: string, response: Response)
   {
     const extension = path.substring(p);
 
-    switch(extension)
+    switch (extension)
     {
       case ".pom":
       case ".nuspec":
-      {
-        response.contentType("text/xml");
-    
-        return true;
-      }
+        {
+          response.contentType("text/xml");
+
+          return true;
+        }
       case ".md":
-      {
-        response.contentType("text/html");
-    
-        return true;
-      }
+        {
+          response.contentType("text/html");
+
+          return true;
+        }
       case ".ab":
       case ".cob":
       case ".cpy":
-      {
-        response.type(".txt");
-    
-        return true;
-      }
-      default:
-      {
-        response.type(extension);
+        {
+          response.type(".txt");
 
-        return true;
-      }
+          return true;
+        }
+      default:
+        {
+          response.type(extension);
+
+          return true;
+        }
     }
   }
 
@@ -213,14 +215,14 @@ async function delete_(request: Request, response: Response)
     const size = 100;
     const paths: string[] = [];
 
-    for await(let item of listObjects(path.substring(1), request.authInfo, true))
+    for await (let item of listObjects(path.substring(1), request.authInfo, true))
     {
       const filepath = (path + item.name).substring(1);
 
       if (item.file && validpath(filepath))
       {
-        paths.push(filepath);  
-        
+        paths.push(filepath);
+
         if (paths.length >= size)
         {
           await deleteObjects(paths);
@@ -228,7 +230,7 @@ async function delete_(request: Request, response: Response)
         }
       }
     }
-  
+
     if (paths.length)
     {
       await deleteObjects(paths);
@@ -263,10 +265,10 @@ async function post(request: Request, response: Response, next: NextFunction)
 
     async function* list() 
     {
-      let zip: string|null = null;
-      let directory: { [name: string]: File }|null = null;
+      let zip: string | null = null;
+      let directory: { [name: string]: File } | null = null;
 
-      for(let name of paths.length ? paths.sort() : [""])
+      for (let name of paths.length ? paths.sort() : [""])
       {
         const fullpath = path + name;
         const zipIndex = fullpath.toLowerCase().indexOf(".zip");
@@ -281,11 +283,11 @@ async function post(request: Request, response: Response, next: NextFunction)
             try
             {
               const header = await getObjectHeader(zipPath.substring(1));
-        
+
               if (header?.DeleteMarker !== false)
               {
                 zip = zipPath;
-                
+
                 directory = (await getZipDirectory(zip.substring(1), header)).files.reduce((result, file) =>
                 {
                   result[file.path] = file;
@@ -294,7 +296,7 @@ async function post(request: Request, response: Response, next: NextFunction)
                 }, {} as { [name: string]: File });
               }
             }
-            catch(e)
+            catch (e)
             {
               // No object found. Continue regular.
               zip = null;
@@ -308,12 +310,12 @@ async function post(request: Request, response: Response, next: NextFunction)
 
             if (file?.type === "File")
             {
-              const item = 
-              { 
-                path: `${zip}/${file.path}`, 
-                entry: true, 
-                size: file.uncompressedSize, 
-                stream: () => file.stream() 
+              const item =
+              {
+                path: `${zip}/${file.path}`,
+                entry: true,
+                size: file.uncompressedSize,
+                stream: () => file.stream()
               };
 
               yield item;
@@ -322,19 +324,19 @@ async function post(request: Request, response: Response, next: NextFunction)
             continue;
           }
         }
-      
-        for await(let object of listObjects(fullpath.substring(1), request.authInfo, true))
+
+        for await (let object of listObjects(fullpath.substring(1), request.authInfo, true))
         {
           const itempath = fullpath + object.name;
 
           if (object.file && validpath(itempath))
           {
-            const item = 
-            { 
-              path: itempath, 
+            const item =
+            {
+              path: itempath,
               entry: false,
-              size: object.size!, 
-              stream: () => getObjectStream(itempath.substring(1)) 
+              size: object.size!,
+              stream: () => getObjectStream(itempath.substring(1))
             };
 
             yield item;
@@ -346,158 +348,158 @@ async function post(request: Request, response: Response, next: NextFunction)
     const size = 100;
     const fullpaths: string[] = [];
 
-    switch(request.body.action)
+    switch (request.body.action)
     {
       case "delete":
-      {
-        if (!matchrole(authInfo, "writer"))
         {
-          forbidden(request, response);
-      
-          return;        
-        }
-
-        for await(let item of list())
-        {
-          fullpaths.push(item.path.substring(1));  
-          
-          if (fullpaths.length >= size)
+          if (!matchrole(authInfo, "writer"))
           {
-            await deleteObjects(fullpaths);
-            fullpaths.length = 0;
-          }
-        }
-    
-        if (fullpaths.length)
-        {
-          await deleteObjects(fullpaths);
-        }
-
-        read(request, response, false);
-  
-        return;
-      }
-      case "upload":
-      {
-        if (!matchrole(authInfo, "writer"))
-        {
-          forbidden(request, response);
-      
-          return;        
-        }
-
-        if (Array.isArray(files))
-        {
-          for(let file of files)
-          {
-            const fullpath = (path + file.originalname).substring(1);
-
-            if (validpath(fullpath))
-            {
-              await setObjectStream(fullpath, fs.createReadStream(file.path));
-            }
-          }
-        }
-      
-        read(request, response, false);
-  
-        return;
-      }
-      case "download":
-      {
-        const name = 
-          path.substring(path.lastIndexOf("/", path.length - 2) + 1, path.length - 1) + 
-          ".tar.gz";
-
-        response.set("Content-disposition", `attachment; filename=${name}`);
-        response.set("Content-type", "application/gzip");
-          
-        const pack = tar.pack();
-  
-        pack.pipe(zlib.createGzip()).pipe(response);
-
-        for await(let item of list())
-        {
-          item.stream().
-            on("error", error => response.status(500).send(error.message)).
-            pipe(
-              pack.entry(
-              {
-                name: item.path.substring(path.length),
-                size: item.size
-              }));
-        }
-
-        pack.finalize();
-
-        return;
-      }
-      case "copy":
-      {
-        const target = request.body.target;
-
-        if (target?.startsWith("/") && paths.length)
-        {
-          const batch: Promise<void>[] = [];
-
-          try
-          {
-            for await(let item of list())
-            {
-              const to = target.endsWith("/") ? target + item.path.substring(path.length) :
-                item.path === path ? target : target + "/" + item.path.substring(path.length);
-
-              if (item.entry)
-              {
-                batch.push(setObjectStream(to.substring(1), item.stream()));
-              }
-              else
-              {
-                const from = item.path.substring(1);
-  
-                batch.push(copy(from, to.substring(1), authInfo));
-              }
-
-              if (batch.length >= 100)
-              {
-                await Promise.all(batch);
-                batch.length = 0;
-              }
-            }
-
-            if (batch.length)
-            {
-              await Promise.all(batch);
-            }
-          }
-          catch(error)
-          {
-            servererror(request, response, error as Error);
+            forbidden(request, response);
 
             return;
           }
-        }
 
-        read(request, response, false);
-  
-        return;
-      }
+          for await (let item of list())
+          {
+            fullpaths.push(item.path.substring(1));
+
+            if (fullpaths.length >= size)
+            {
+              await deleteObjects(fullpaths);
+              fullpaths.length = 0;
+            }
+          }
+
+          if (fullpaths.length)
+          {
+            await deleteObjects(fullpaths);
+          }
+
+          read(request, response, false);
+
+          return;
+        }
+      case "upload":
+        {
+          if (!matchrole(authInfo, "writer"))
+          {
+            forbidden(request, response);
+
+            return;
+          }
+
+          if (Array.isArray(files))
+          {
+            for (let file of files)
+            {
+              const fullpath = (path + file.originalname).substring(1);
+
+              if (validpath(fullpath))
+              {
+                await setObjectStream(fullpath, fs.createReadStream(file.path));
+              }
+            }
+          }
+
+          read(request, response, false);
+
+          return;
+        }
+      case "download":
+        {
+          const name =
+            path.substring(path.lastIndexOf("/", path.length - 2) + 1, path.length - 1) +
+            ".tar.gz";
+
+          response.set("Content-disposition", `attachment; filename=${name}`);
+          response.set("Content-type", "application/gzip");
+
+          const pack = tar.pack();
+
+          pack.pipe(zlib.createGzip()).pipe(response);
+
+          for await (let item of list())
+          {
+            item.stream().
+              on("error", error => response.status(500).send(error.message)).
+              pipe(
+                pack.entry(
+                  {
+                    name: item.path.substring(path.length),
+                    size: item.size
+                  }));
+          }
+
+          pack.finalize();
+
+          return;
+        }
+      case "copy":
+        {
+          const target = request.body.target;
+
+          if (target?.startsWith("/") && paths.length)
+          {
+            const batch: Promise<void>[] = [];
+
+            try
+            {
+              for await (let item of list())
+              {
+                const to = target.endsWith("/") ? target + item.path.substring(path.length) :
+                  item.path === path ? target : target + "/" + item.path.substring(path.length);
+
+                if (item.entry)
+                {
+                  batch.push(setObjectStream(to.substring(1), item.stream()));
+                }
+                else
+                {
+                  const from = item.path.substring(1);
+
+                  batch.push(copy(from, to.substring(1), authInfo));
+                }
+
+                if (batch.length >= 100)
+                {
+                  await Promise.all(batch);
+                  batch.length = 0;
+                }
+              }
+
+              if (batch.length)
+              {
+                await Promise.all(batch);
+              }
+            }
+            catch (error)
+            {
+              servererror(request, response, error as Error);
+
+              return;
+            }
+          }
+
+          read(request, response, false);
+
+          return;
+        }
       default:
-      {
-        next();
-  
-        return;
-      }
+        {
+          next();
+
+          return;
+        }
     }
   }
   finally
   {
     if (Array.isArray(files))
     {
-      for(let file of files)
+      for (let file of files)
       {
         fs.unlink(
-          file.path, 
+          file.path,
           e => e && console.log(`Cannot delete file: ${file.path}\n${e.message}`));
       }
     }
